@@ -15,9 +15,15 @@ Only the plumbing needed to host it as static files:
   `fonts-lato.css`;
 - absolute links back into the course's Moodle installation were rewritten to the
   in-page anchors they were always meant to be, and the `<!-- saved from url= -->`
-  comments were removed.
+  comments were removed;
+- each page gained a `lang` attribute, a description, a canonical link and a footer
+  linking back to the Mona guide, so that the pages describe themselves to a search
+  engine and a reader who lands on one can find the other;
+- the instruction set page no longer sets `maximum-scale=0.9`, which prevented
+  pinch-zoom on a phone.
 
-No JavaScript was touched.
+No JavaScript was touched, and nothing the CPU, the assembler or the peripherals do
+was changed.
 
 ## Where it comes from
 
