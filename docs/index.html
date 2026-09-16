@@ -358,6 +358,7 @@ footer { border-top: 1px solid var(--line-soft); padding: 34px 20px 60px; backgr
   <a class="brand" href="#top"><span class="glyph">M</span> Mona <small class="hide-sm">crash course</small></a>
   <nav>
     <a href="https://github.com/mrggvg/monac/blob/main/docs/reference/language.md">Full spec</a>
+    <a href="simulator/">Simulator</a>
     <a class="hide-sm" href="https://github.com/mrggvg/monac/tree/main/examples">Examples</a>
     <a href="https://github.com/mrggvg/monac">GitHub</a>
     <button class="ghost" id="theme" type="button" aria-label="Switch theme">◐</button>
@@ -432,6 +433,10 @@ monac: stack at most 18 bytes, 2616 bytes free</span></pre>
     from Moodle at <code>e.famnit.upr.si</code>. You are in the right place if your machine has registers
     <code>A</code>, <code>B</code>, <code>C</code> and <code>D</code>, 4 KB of RAM, a text display at
     <code>0x1000</code>, a graphics card on the I/O ports, and no <code>MOD</code> instruction.</p>
+  <p>The simulator itself is <a href="simulator/">published here</a>, so you can paste assembly in and run it
+    without going through Moodle, and its <a href="simulator/instruction-set/">instruction set reference</a>
+    is next to it. Both are copies of the course's own; see
+    <a href="https://github.com/mrggvg/monac/blob/main/docs/simulator/ATTRIBUTION.md">where they come from</a>.</p>
   <p><i>Slovensko:</i> Mona je programski jezik, podoben C-ju. Prevajalnik <code>monac</code> jo prevede v
     zbirnik (asembler) za 16-bitni simulator, ki ga uporabljamo pri predmetu Sistemi I na UP FAMNIT.</p>
   <p>This is an independent student project — not affiliated with, nor endorsed by, the course or the faculty.</p>
@@ -449,7 +454,7 @@ monac: stack at most 18 bytes, 2616 bytes free</span></pre>
     <tr><td>A JDK, version 21 or newer</td><td>the compiler is a Java program. It must be a JDK, not just a JRE:
       <code>javac -version</code> should answer.</td></tr>
     <tr><td>Maven 3.9 or newer</td><td>to build the compiler from source, once.</td></tr>
-    <tr><td>The simulator</td><td>open it in a browser, as in the course.</td></tr>
+    <tr><td>The simulator</td><td><a href="simulator/">open it here</a>, or use the course's copy — they are the same.</td></tr>
     <tr><td>Node.js <small>(optional)</small></td><td>only for running the compiler's own end-to-end tests.</td></tr>
   </table></div>
 

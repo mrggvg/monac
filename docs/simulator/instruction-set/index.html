@@ -1,0 +1,1966 @@
+<!DOCTYPE html>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CPU instruction set documentation</title>
+    <link rel="stylesheet" type="text/css" href="assets/pygments.css">
+    <link rel="stylesheet" type="text/css" href="assets/alabaster.css">
+    <script data-url_root="./" id="documentation_options" src="assets/documentation_options.js"></script>
+    <script src="assets/jquery.js"></script>
+    <script src="assets/underscore.js"></script>
+    <script src="assets/doctools.js"></script>
+    <link rel="index" title="Index" href="#">
+    <link rel="search" title="Search" href="#">
+   
+  <link rel="stylesheet" href="assets/custom.css" type="text/css">
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head><body cz-shortcut-listen="true">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="cpu-instruction-set">
+<h1>CPU instruction set<a class="headerlink" href="#cpu-instruction-set" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+<span id="document-instruction-set"></span><ul class="simple">
+<li><p><a class="reference internal" href="#instruction-add"><span class="std std-ref">ADD: 16-bits addition</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-addb"><span class="std std-ref">ADDB: 8-bits addition</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-and"><span class="std std-ref">AND: 16-bits bitwise AND</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-andb"><span class="std std-ref">ANDB: 8-bits bitwise AND</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-call"><span class="std std-ref">CALL: call to subroutine</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-cli"><span class="std std-ref">CLI: clear interrupt mask</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-cmp"><span class="std std-ref">CMP: 16-bits integer comparison</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-cmpb"><span class="std std-ref">CMPB: 8-bits integer comparison</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-dec"><span class="std std-ref">DEC: decrement 16-bits register</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-decb"><span class="std std-ref">DECB: decrement 8-bits register</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-div"><span class="std std-ref">DIV: 16-bits division</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-divb"><span class="std std-ref">DIVB: 8-bits division</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-hlt"><span class="std std-ref">HLT: halt processor</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-in"><span class="std std-ref">IN: read input/output register</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-inc"><span class="std std-ref">INC: increment 16-bits register</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-incb"><span class="std std-ref">INCB: increment 8-bits register</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-iret"><span class="std std-ref">IRET: return from ISR</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-ja"><span class="std std-ref">JA: jump if above</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-jae"><span class="std std-ref">JAE: jump if above or equal</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-jb"><span class="std std-ref">JB: jump if below</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-jbe"><span class="std std-ref">JBE: jump if below or equal</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-jc"><span class="std std-ref">JC: jump if carry set</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-je"><span class="std std-ref">JE: jump if equal</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-jmp"><span class="std std-ref">JMP: jump to address</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-jna"><span class="std std-ref">JNA: jump if not above</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-jnae"><span class="std std-ref">JNAE: jump if not above or equal</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-jnb"><span class="std std-ref">JNB: jump if not below</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-jnbe"><span class="std std-ref">JNBE: jump if not below or equal</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-jnc"><span class="std std-ref">JNC: jump if not carry set</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-jne"><span class="std std-ref">JNE: jump if not equal</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-jnz"><span class="std std-ref">JNZ: jump if not zero</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-jz"><span class="std std-ref">JZ: jump if zero</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-mov"><span class="std std-ref">MOV: 16-bits copy</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-movb"><span class="std std-ref">MOVB: 8-bits copy</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-mul"><span class="std std-ref">MUL: 16-bits multiplication</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-mulb"><span class="std std-ref">MULB: 8-bits multiplication</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-not"><span class="std std-ref">NOT: 16-bits bitwise NOT</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-notb"><span class="std std-ref">NOTB: 8-bits bitwise NOT</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-or"><span class="std std-ref">OR: 16-bits bitwise OR</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-orb"><span class="std std-ref">ORB: 8-bits bitwise OR</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-out"><span class="std std-ref">OUT: write input/output register</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-pop"><span class="std std-ref">POP: pop 16-bits from stack</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-popb"><span class="std std-ref">POPB: pop 8-bits from stack</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-push"><span class="std std-ref">PUSH: push 16-bits to stack</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-pushb"><span class="std std-ref">PUSHB: push 8-bits to stack</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-ret"><span class="std std-ref">RET: return from subroutine</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-shl"><span class="std std-ref">SHL: 16-bits logical left shift</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-shlb"><span class="std std-ref">SHLB: 8-bits logical left shift</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-shr"><span class="std std-ref">SHR: 16-bits logical right shift</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-shrb"><span class="std std-ref">SHRB: 8-bits logical right shift</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-sti"><span class="std std-ref">STI: set interrupt mask</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-sub"><span class="std std-ref">SUB: 16-bits substraction</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-subb"><span class="std std-ref">SUBB: 8-bits substraction</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-xor"><span class="std std-ref">XOR: 16-bits bitwise XOR</span></a></p></li>
+<li><p><a class="reference internal" href="#instruction-xorb"><span class="std std-ref">XORB: 8-bits bitwise XOR</span></a></p></li>
+</ul>
+<div class="section" id="add-16-bits-addition">
+<span id="instruction-add"></span><h2>ADD: 16-bits addition<a class="headerlink" href="#add-16-bits-addition" title="Permalink to this headline">¶</a></h2>
+<p>Performs an addition of two 16-bits integers. Every form of the instruction
+will have two operands. Operand 1 will always be a reference to a 16-bits
+register. The integer contained by the register will be added to the value
+referenced by Operand 2. The result will be stored in the register referenced
+by Operand 1.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 16%">
+<col style="width: 27%">
+<col style="width: 27%">
+<col style="width: 30%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>17 (0x11)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ADD</span> <span class="pre">A,</span> <span class="pre">B</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>18 (0x12)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ADD</span> <span class="pre">C,</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>19 (0x13)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ADD</span> <span class="pre">D,</span> <span class="pre">[0x1000]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>20 (0x14)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ADD</span> <span class="pre">B,</span> <span class="pre">12345</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="addb-8-bits-addition">
+<span id="instruction-addb"></span><h2>ADDB: 8-bits addition<a class="headerlink" href="#addb-8-bits-addition" title="Permalink to this headline">¶</a></h2>
+<p>Performs an addition of two 8-bits integers. Every form of the instruction
+will have two operands. Operand 1 will always be a reference to an 8-bits
+register. The integer contained by the register will be added to the value
+referenced by Operand 2. The result will be stored in the register referenced
+by Operand 1.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 16%">
+<col style="width: 26%">
+<col style="width: 26%">
+<col style="width: 32%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>21 (0x15)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ADDB</span> <span class="pre">AH,</span> <span class="pre">BH</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>22 (0x16)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ADDB</span> <span class="pre">CL,</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>23 (0x17)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ADDB</span> <span class="pre">DH,</span> <span class="pre">[0x100]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>24 (0x18)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>BYTE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ADDB</span> <span class="pre">BL,</span> <span class="pre">128</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="and-16-bits-bitwise-and">
+<span id="instruction-and"></span><h2>AND: 16-bits bitwise AND<a class="headerlink" href="#and-16-bits-bitwise-and" title="Permalink to this headline">¶</a></h2>
+<p>Performs a <a class="reference external" href="https://en.wikipedia.org/wiki/Bitwise_operation#AND">bitwise AND</a>
+of two 16-bits integers. Every form of the instruction will have two operands.
+Operand 1 will always be a reference to a 16-bits register. A logic AND will be
+performed between the contents of the register and the value referenced by
+Operand 2. The result will be stored in the register referenced by Operand 1.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 16%">
+<col style="width: 27%">
+<col style="width: 27%">
+<col style="width: 30%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>88 (0x58)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">AND</span> <span class="pre">A,</span> <span class="pre">B</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>89 (0x59)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">AND</span> <span class="pre">C,</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>90 (0x5A)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">AND</span> <span class="pre">D,</span> <span class="pre">[0x1000]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>91 (0x5B)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">AND</span> <span class="pre">B,</span> <span class="pre">0x00FF</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="andb-8-bits-bitwise-and">
+<span id="instruction-andb"></span><h2>ANDB: 8-bits bitwise AND<a class="headerlink" href="#andb-8-bits-bitwise-and" title="Permalink to this headline">¶</a></h2>
+<p>Performs a <a class="reference external" href="https://en.wikipedia.org/wiki/Bitwise_operation#AND">bitwise AND</a>
+of two 8-bits integers. Every form of the instruction will have two operands.
+Operand 1 will always be a reference to an 8-bits register. A logic AND will be
+performed between the contents of the register and the value referenced by
+Operand 2. The result will be stored in the register referenced by Operand 1.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 16%">
+<col style="width: 26%">
+<col style="width: 26%">
+<col style="width: 31%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>92 (0x5C)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ANDB</span> <span class="pre">AH,</span> <span class="pre">BL</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>93 (0x5D)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ANDB</span> <span class="pre">CL,</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>94 (0x5E)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ANDB</span> <span class="pre">DH,</span> <span class="pre">[0x30]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>95 (0x5F)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ANDB</span> <span class="pre">BL,</span> <span class="pre">0x0F</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="call-call-to-subroutine">
+<span id="instruction-call"></span><h2>CALL: call to subroutine<a class="headerlink" href="#call-call-to-subroutine" title="Permalink to this headline">¶</a></h2>
+<p>Jumps to a subroutine that starts at the address referenced by Operand 1. The
+instruction will push to the stack the return address, i.e. the address of
+the instruction that follows the call.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 21%">
+<col style="width: 26%">
+<col style="width: 21%">
+<col style="width: 32%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>69 (0x45)</p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">CALL</span> <span class="pre">[B]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>70 (0x46)</p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">CALL</span> <span class="pre">0x1000</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="cli-clear-interrupt-mask">
+<span id="instruction-cli"></span><h2>CLI: clear interrupt mask<a class="headerlink" href="#cli-clear-interrupt-mask" title="Permalink to this headline">¶</a></h2>
+<p>Clears the Interrupt Mask Bit of the Status Register. When the register is
+cleared, the CPU interrupts are masked and, thus, disabled. The instruction has
+no operands. This is a priviledged instruction that can only be called when in
+Supervisor mode.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 28%">
+<col style="width: 26%">
+<col style="width: 26%">
+<col style="width: 21%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>130 (0x82)</p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">CLI</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="cmp-16-bits-integer-comparison">
+<span id="instruction-cmp"></span><h2>CMP: 16-bits integer comparison<a class="headerlink" href="#cmp-16-bits-integer-comparison" title="Permalink to this headline">¶</a></h2>
+<p>Compares two 16-bits integers. Every form of the instruction will have two
+operands. Operand 1 will always be a reference to a 16-bits register. The
+comparison will be done by substracting the value referenced by the second
+operand to the value contained by the register referenced by Operand 1. The
+result of the substraction will not be stored, but the <strong>carry</strong> (C) and
+<strong>zero</strong> (Z) flags of the Status Register will be modified as follows:</p>
+<ul class="simple">
+<li><p>Operand 1 == Operand 2 =&gt; C = 0, Z = 1</p></li>
+<li><p>Operand 1 &gt; Operand 2 =&gt; C = 0, Z = 0</p></li>
+<li><p>Operand 1 &lt; Operand 2 =&gt; C = 1, Z = 0</p></li>
+</ul>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 16%">
+<col style="width: 27%">
+<col style="width: 27%">
+<col style="width: 30%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>37 (0x25)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">CMP</span> <span class="pre">A,</span> <span class="pre">B</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>38 (0x26)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">CMP</span> <span class="pre">C,</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>39 (0x27)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">CMP</span> <span class="pre">D,</span> <span class="pre">[0x1000]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>40 (0x28)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">CMP</span> <span class="pre">B,</span> <span class="pre">12345</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="cmpb-8-bits-integer-comparison">
+<span id="instruction-cmpb"></span><h2>CMPB: 8-bits integer comparison<a class="headerlink" href="#cmpb-8-bits-integer-comparison" title="Permalink to this headline">¶</a></h2>
+<p>Compares two 8-bits integers. Every form of the instruction will have two
+operands. Operand 1 will always be a reference to an 8-bits register. The
+comparison will be done by substracting the value referenced by the second
+operand to the value contained by the register referenced by Operand 1. The
+result of the substraction will not be stored, but the <strong>carry</strong> (C) and
+<strong>zero</strong> (Z) flags of the Status Register will be modified as follows:</p>
+<ul class="simple">
+<li><p>Operand 1 == Operand 2 =&gt; C = 0, Z = 1</p></li>
+<li><p>Operand 1 &gt; Operand 2 =&gt; C = 0, Z = 0</p></li>
+<li><p>Operand 1 &lt; Operand 2 =&gt; C = 1, Z = 0</p></li>
+</ul>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 16%">
+<col style="width: 26%">
+<col style="width: 26%">
+<col style="width: 31%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>41 (0x29)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">CMPB</span> <span class="pre">CH,</span> <span class="pre">CL</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>42 (0x2A)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">CMPB</span> <span class="pre">DL,</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>43 (0x2B)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">CMPB</span> <span class="pre">BH,</span> <span class="pre">[0x20]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>44 (0x2C)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>BYTE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">CMPB</span> <span class="pre">CH,</span> <span class="pre">0x4</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="dec-decrement-16-bits-register">
+<span id="instruction-dec"></span><h2>DEC: decrement 16-bits register<a class="headerlink" href="#dec-decrement-16-bits-register" title="Permalink to this headline">¶</a></h2>
+<p>Decrements the value of a 16-bits register by 1 unit. The result will be
+stored in the same register. The operation will modify the values of the
+<strong>carry</strong> (C) and <strong>zero</strong> (Z) flags of the Status Register.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 21%">
+<col style="width: 37%">
+<col style="width: 21%">
+<col style="width: 21%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>35 (0x23)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">DEC</span> <span class="pre">B</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="decb-decrement-8-bits-register">
+<span id="instruction-decb"></span><h2>DECB: decrement 8-bits register<a class="headerlink" href="#decb-decrement-8-bits-register" title="Permalink to this headline">¶</a></h2>
+<p>Decrements the value of an 8-bits register by 1 unit. The result will be
+stored in the same register. The operation will modify the values of the
+<strong>carry</strong> (C) and <strong>zero</strong> (Z) flags of the Status Register.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 35%">
+<col style="width: 20%">
+<col style="width: 24%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>36 (0x24)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">DECB</span> <span class="pre">BL</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="div-16-bits-division">
+<span id="instruction-div"></span><h2>DIV: 16-bits division<a class="headerlink" href="#div-16-bits-division" title="Permalink to this headline">¶</a></h2>
+<p>Divides the value stored in Register A by the 16-bits value referred to by
+Operand 1. The result will be stored into Register A. The operation will
+modify the values of the <strong>carry</strong> (C) and <strong>zero</strong> (Z) flags of the Status
+Register. If the instruction executes a divison-by-zero, an exception will be triggered.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 19%">
+<col style="width: 32%">
+<col style="width: 19%">
+<col style="width: 31%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>80 (0x50)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">DIV</span> <span class="pre">B</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>81 (0x51)</p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">DIV</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>82 (0x52)</p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">DIV</span> <span class="pre">[0x1000]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>83 (0x53)</p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">DIV</span> <span class="pre">0x2</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="divb-8-bits-division">
+<span id="instruction-divb"></span><h2>DIVB: 8-bits division<a class="headerlink" href="#divb-8-bits-division" title="Permalink to this headline">¶</a></h2>
+<p>Divides the value stored in Register AL by the 8-bits value referred to by
+Operand 1. The result will be stored into Register AL. The operation will
+modify the values of the <strong>carry</strong> (C) and <strong>zero</strong> (Z) flags of the Status
+Register. If the instruction executes a divison-by-zero, an exception will be
+triggered.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 19%">
+<col style="width: 31%">
+<col style="width: 19%">
+<col style="width: 31%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>84 (0x54)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">DIVB</span> <span class="pre">BL</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>85 (0x55)</p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">DIVB</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>86 (0x56)</p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">DIVB</span> <span class="pre">[0x100]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>87 (0x57)</p></td>
+<td><p><em>BYTE</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">DIVB</span> <span class="pre">0x2</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="hlt-halt-processor">
+<span id="instruction-hlt"></span><h2>HLT: halt processor<a class="headerlink" href="#hlt-halt-processor" title="Permalink to this headline">¶</a></h2>
+<p>Sets the CPU in halt mode. The <strong>halt</strong> (H) flag of the Status Register will
+be set and the processor will be stopped from executing further instructions.
+Interrupts can occur if they are properly enabled. If an interrupt occurs,
+the CPU will abandon halt mode (<strong>halt</strong> flag will be cleared) and the
+execution will resume from the instruction service routine.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 23%">
+<col style="width: 28%">
+<col style="width: 28%">
+<col style="width: 23%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>0 (0x0)</p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">HLT</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="in-read-input-output-register">
+<span id="instruction-in"></span><h2>IN: read input/output register<a class="headerlink" href="#in-read-input-output-register" title="Permalink to this headline">¶</a></h2>
+<p>Reads the value of an input/output register. The address of the register to be
+read is obtained from the value of Operand 1. The result will be stored into
+Register A. This is a priviledged instruction that can only be called when in
+Supervisor mode.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 32%">
+<col style="width: 19%">
+<col style="width: 29%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>135 (0x87)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">IN</span> <span class="pre">B</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>136 (0x88)</p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">IN</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>137 (0x89)</p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">IN</span> <span class="pre">[0x1000]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>138 (0x8A)</p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">IN</span> <span class="pre">0x2</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="inc-increment-16-bits-register">
+<span id="instruction-inc"></span><h2>INC: increment 16-bits register<a class="headerlink" href="#inc-increment-16-bits-register" title="Permalink to this headline">¶</a></h2>
+<p>Increments the value of a 16-bits register by 1 unit. The result will be
+stored in the same register. The operation will modify the values of the
+<strong>carry</strong> (C) and <strong>zero</strong> (Z) flags of the Status Register.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 21%">
+<col style="width: 37%">
+<col style="width: 21%">
+<col style="width: 21%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>33 (0x21)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">INC</span> <span class="pre">C</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="incb-increment-8-bits-register">
+<span id="instruction-incb"></span><h2>INCB: increment 8-bits register<a class="headerlink" href="#incb-increment-8-bits-register" title="Permalink to this headline">¶</a></h2>
+<p>Increments the value of an 8-bits register by 1 unit. The result will be stored
+in the same register. The operation will modify the values of the <strong>carry</strong> (C)
+and <strong>zero</strong> (Z) flags of the Status Register.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 35%">
+<col style="width: 20%">
+<col style="width: 24%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>34 (0x22)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">INCB</span> <span class="pre">DL</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="iret-return-from-isr">
+<span id="instruction-iret"></span><h2>IRET: return from ISR<a class="headerlink" href="#iret-return-from-isr" title="Permalink to this headline">¶</a></h2>
+<p>Returns from an Interrupt Service Routiner (ISR). The execution of this
+instruction will recover the Instruction Pointer (IP) and the Status Register
+stored in the stack and jump to the IP address.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 27%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 23%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>132 (0x84)</p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">IRET</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="ja-jump-if-above">
+<span id="instruction-ja"></span><h2>JA: jump if above<a class="headerlink" href="#ja-jump-if-above" title="Permalink to this headline">¶</a></h2>
+<p>Jumps to a given address if the <strong>carry</strong> (C) and <strong>zero</strong> (Z) flags of the
+Status Register are zero (see <a class="reference internal" href="#instruction-cmp"><span class="std std-ref">CMP: 16-bits integer comparison</span></a>). If the condition is met,
+the CPU will resume its execution from the address referenced by Operand 1.
+Otherwise, it will continue with the next instruction. The instruction has one
+mnemonic alias: <code class="docutils literal notranslate"><span class="pre">JNBE</span></code>.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 22%">
+<col style="width: 27%">
+<col style="width: 22%">
+<col style="width: 29%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>55 (0x37)</p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">JA</span> <span class="pre">[C]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>56 (0x38)</p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">JA</span> <span class="pre">0x1000</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="jae-jump-if-above-or-equal">
+<span id="instruction-jae"></span><h2>JAE: jump if above or equal<a class="headerlink" href="#jae-jump-if-above-or-equal" title="Permalink to this headline">¶</a></h2>
+<p>See <a class="reference internal" href="#instruction-jnc"><span class="std std-ref">JNC: jump if not carry set</span></a>.</p>
+</div>
+<div class="section" id="jb-jump-if-below">
+<span id="instruction-jb"></span><h2>JB: jump if below<a class="headerlink" href="#jb-jump-if-below" title="Permalink to this headline">¶</a></h2>
+<p>See <a class="reference internal" href="#instruction-jc"><span class="std std-ref">JC: jump if carry set</span></a>.</p>
+</div>
+<div class="section" id="jbe-jump-if-below-or-equal">
+<span id="instruction-jbe"></span><h2>JBE: jump if below or equal<a class="headerlink" href="#jbe-jump-if-below-or-equal" title="Permalink to this headline">¶</a></h2>
+<p>See <a class="reference internal" href="#instruction-jna"><span class="std std-ref">JNA: jump if not above</span></a>.</p>
+</div>
+<div class="section" id="jc-jump-if-carry-set">
+<span id="instruction-jc"></span><h2>JC: jump if carry set<a class="headerlink" href="#jc-jump-if-carry-set" title="Permalink to this headline">¶</a></h2>
+<p>Jumps to a given address if the <strong>carry</strong> (C) flag of the Status Register is
+set (see <a class="reference internal" href="#instruction-cmp"><span class="std std-ref">CMP: 16-bits integer comparison</span></a>). If the condition is met, the CPU will resume
+its execution from the address referenced by Operand 1. Otherwise, it will
+continue with the next instruction. The instruction has two mnemonic aliases:
+<code class="docutils literal notranslate"><span class="pre">JBE</span></code> and <code class="docutils literal notranslate"><span class="pre">JNAE</span></code>.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 22%">
+<col style="width: 27%">
+<col style="width: 22%">
+<col style="width: 29%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>47 (0x2F)</p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">JC</span> <span class="pre">[C]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>48 (0x30)</p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">JC</span> <span class="pre">0x2000</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="je-jump-if-equal">
+<span id="instruction-je"></span><h2>JE: jump if equal<a class="headerlink" href="#je-jump-if-equal" title="Permalink to this headline">¶</a></h2>
+<p>See <a class="reference internal" href="#instruction-jz"><span class="std std-ref">JZ: jump if zero</span></a>.</p>
+</div>
+<div class="section" id="jmp-jump-to-address">
+<span id="instruction-jmp"></span><h2>JMP: jump to address<a class="headerlink" href="#jmp-jump-to-address" title="Permalink to this headline">¶</a></h2>
+<p>Inconditionally jumps to a given address. The CPU will resume its execution
+from the address referenced by Operand 1.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 21%">
+<col style="width: 27%">
+<col style="width: 21%">
+<col style="width: 31%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>45 (0x2D)</p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">JMP</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>46 (0x2E)</p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">JMP</span> <span class="pre">0x1200</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="jna-jump-if-not-above">
+<span id="instruction-jna"></span><h2>JNA: jump if not above<a class="headerlink" href="#jna-jump-if-not-above" title="Permalink to this headline">¶</a></h2>
+<p>Jumps to a given address if the <strong>carry</strong> (C) or <strong>zero</strong> (Z) flags of the
+Status Register are set (see <a class="reference internal" href="#instruction-cmp"><span class="std std-ref">CMP: 16-bits integer comparison</span></a>). If the condition is met,
+the CPU will resume its execution from the address referenced by Operand 1.
+Otherwise, it will continue with the next instruction. The instruction has one
+mnemonic alias: <code class="docutils literal notranslate"><span class="pre">JBE</span></code>.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 21%">
+<col style="width: 27%">
+<col style="width: 21%">
+<col style="width: 31%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>57 (0x39)</p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">JNA</span> <span class="pre">[C]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>58 (0x3A)</p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">JNA</span> <span class="pre">0x1000</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="jnae-jump-if-not-above-or-equal">
+<span id="instruction-jnae"></span><h2>JNAE: jump if not above or equal<a class="headerlink" href="#jnae-jump-if-not-above-or-equal" title="Permalink to this headline">¶</a></h2>
+<p>See <a class="reference internal" href="#instruction-jc"><span class="std std-ref">JC: jump if carry set</span></a>.</p>
+</div>
+<div class="section" id="jnb-jump-if-not-below">
+<span id="instruction-jnb"></span><h2>JNB: jump if not below<a class="headerlink" href="#jnb-jump-if-not-below" title="Permalink to this headline">¶</a></h2>
+<p>See <a class="reference internal" href="#instruction-jnc"><span class="std std-ref">JNC: jump if not carry set</span></a>.</p>
+</div>
+<div class="section" id="jnbe-jump-if-not-below-or-equal">
+<span id="instruction-jnbe"></span><h2>JNBE: jump if not below or equal<a class="headerlink" href="#jnbe-jump-if-not-below-or-equal" title="Permalink to this headline">¶</a></h2>
+<p>See <a class="reference internal" href="#instruction-jnbe"><span class="std std-ref">JNBE: jump if not below or equal</span></a>.</p>
+</div>
+<div class="section" id="jnc-jump-if-not-carry-set">
+<span id="instruction-jnc"></span><h2>JNC: jump if not carry set<a class="headerlink" href="#jnc-jump-if-not-carry-set" title="Permalink to this headline">¶</a></h2>
+<p>Jumps to a given address if the <strong>carry</strong> (C) flag of the Status Register is
+zero (see <a class="reference internal" href="#instruction-cmp"><span class="std std-ref">CMP: 16-bits integer comparison</span></a>). If the condition is met, the CPU will resume
+its execution from the address referenced by Operand 1. Otherwise, it will
+continue with the next instruction. The instruction has two mnemonic aliases:
+<code class="docutils literal notranslate"><span class="pre">JNB</span></code> and <code class="docutils literal notranslate"><span class="pre">JAE</span></code>.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 21%">
+<col style="width: 27%">
+<col style="width: 21%">
+<col style="width: 31%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>49 (0x31)</p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">JNC</span> <span class="pre">[C]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>50 (0x32)</p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">JNC</span> <span class="pre">0x4000</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="jne-jump-if-not-equal">
+<span id="instruction-jne"></span><h2>JNE: jump if not equal<a class="headerlink" href="#jne-jump-if-not-equal" title="Permalink to this headline">¶</a></h2>
+<p>See <a class="reference internal" href="#instruction-jnz"><span class="std std-ref">JNZ: jump if not zero</span></a>.</p>
+</div>
+<div class="section" id="jnz-jump-if-not-zero">
+<span id="instruction-jnz"></span><h2>JNZ: jump if not zero<a class="headerlink" href="#jnz-jump-if-not-zero" title="Permalink to this headline">¶</a></h2>
+<p>Jumps to a given address if the <strong>zero</strong> (Z) flag of the Status Register is set
+(see <a class="reference internal" href="#instruction-cmp"><span class="std std-ref">CMP: 16-bits integer comparison</span></a>). If the condition is met, the CPU will resume its
+execution from the address referenced by Operand 1. Otherwise, it will
+continue with the next instruction. The instruction has one mnemonic alias:
+<code class="docutils literal notranslate"><span class="pre">JNE</span></code>.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 21%">
+<col style="width: 27%">
+<col style="width: 21%">
+<col style="width: 31%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>53 (0x35)</p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">JNZ</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>54 (0x36)</p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">JNZ</span> <span class="pre">0x1000</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="jz-jump-if-zero">
+<span id="instruction-jz"></span><h2>JZ: jump if zero<a class="headerlink" href="#jz-jump-if-zero" title="Permalink to this headline">¶</a></h2>
+<p>Jumps to a given address if the <strong>zero</strong> (Z) flag of the Status Register is zero
+(see <a class="reference internal" href="#instruction-cmp"><span class="std std-ref">CMP: 16-bits integer comparison</span></a>). If the condition is met, the CPU will resume its
+execution from the address referenced by Operand 1. Otherwise, it will
+continue with the next instruction. The instruction has one mnemonic alias:
+<code class="docutils literal notranslate"><span class="pre">JE</span></code>.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 22%">
+<col style="width: 27%">
+<col style="width: 22%">
+<col style="width: 29%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>51 (0x33)</p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">JZ</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>52 (0x34)</p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">JZ</span> <span class="pre">0x1000</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="mov-16-bits-copy">
+<span id="instruction-mov"></span><h2>MOV: 16-bits copy<a class="headerlink" href="#mov-16-bits-copy" title="Permalink to this headline">¶</a></h2>
+<p>Copies a 16-bits value, referenced by Operand 2, to the location referred to by
+Operand 1.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 14%">
+<col style="width: 28%">
+<col style="width: 28%">
+<col style="width: 30%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1 (0x01)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MOV</span> <span class="pre">A,</span> <span class="pre">B</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>2 (0x02)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MOV</span> <span class="pre">C,</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>3 (0x03)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MOV</span> <span class="pre">D,</span> <span class="pre">[0x1000]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>4 (0x04)</p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MOV</span> <span class="pre">[B-2],</span> <span class="pre">A</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>5 (0x05)</p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MOV</span> <span class="pre">[0x100],</span> <span class="pre">D</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>6 (0x06)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MOV</span> <span class="pre">A,</span> <span class="pre">0x100</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>7 (0x07)</p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MOV</span> <span class="pre">[D],</span> <span class="pre">B</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>8 (0x08)</p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MOV</span> <span class="pre">[0x200],</span> <span class="pre">C</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="movb-8-bits-copy">
+<span id="instruction-movb"></span><h2>MOVB: 8-bits copy<a class="headerlink" href="#movb-8-bits-copy" title="Permalink to this headline">¶</a></h2>
+<p>Copies an 8-bits value, referenced by Operand 2, to the location referred to by
+Operand 1.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 16%">
+<col style="width: 26%">
+<col style="width: 26%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>9 (0x09)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MOVB</span> <span class="pre">AH,</span> <span class="pre">BL</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>10 (0x0A)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MOVB</span> <span class="pre">BL,</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>11 (0x0B)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MOVB</span> <span class="pre">DH,</span> <span class="pre">[0x1000]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>12 (0x0C)</p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MOVB</span> <span class="pre">[B],</span> <span class="pre">AH</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>13 (0x0D)</p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MOVB</span> <span class="pre">[0x100],</span> <span class="pre">CL</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>14 (0x0E)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>BYTE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MOVB</span> <span class="pre">AL,</span> <span class="pre">0x80</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>15 (0x0F)</p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><em>BYTE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MOVB</span> <span class="pre">[D],</span> <span class="pre">AL</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>16 (0x10)</p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><em>BYTE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MOVB</span> <span class="pre">[0x200],</span> <span class="pre">CH</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="mul-16-bits-multiplication">
+<span id="instruction-mul"></span><h2>MUL: 16-bits multiplication<a class="headerlink" href="#mul-16-bits-multiplication" title="Permalink to this headline">¶</a></h2>
+<p>Multiplies the value stored in Register A by the 16-bits value referred to by
+Operand 1. The result will be stored into Register A. The operation will
+modify the values of the <strong>carry</strong> (C) and <strong>zero</strong> (Z) flags of the Status
+Register.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 19%">
+<col style="width: 32%">
+<col style="width: 19%">
+<col style="width: 31%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>72 (0x48)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MUL</span> <span class="pre">A</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>73 (0x49)</p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MUL</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>74 (0x4A)</p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MUL</span> <span class="pre">[0x2000]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>75 (0x4B)</p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MUL</span> <span class="pre">0x4</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="mulb-8-bits-multiplication">
+<span id="instruction-mulb"></span><h2>MULB: 8-bits multiplication<a class="headerlink" href="#mulb-8-bits-multiplication" title="Permalink to this headline">¶</a></h2>
+<p>Multiplies the value stored in Register AL by the 8-bits value referred to by
+Operand 1. The result will be stored into Register AL. The operation will
+modify the values of the <strong>carry</strong> (C) and <strong>zero</strong> (Z) flags of the Status
+Register.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 19%">
+<col style="width: 31%">
+<col style="width: 19%">
+<col style="width: 31%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>76 (0x4C)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MULB</span> <span class="pre">CL</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>77 (0x4D)</p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MULB</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>78 (0x4E)</p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MULB</span> <span class="pre">[0x400]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>79 (0x4F)</p></td>
+<td><p><em>BYTE</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">MULB</span> <span class="pre">0x8</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="not-16-bits-bitwise-not">
+<span id="instruction-not"></span><h2>NOT: 16-bits bitwise NOT<a class="headerlink" href="#not-16-bits-bitwise-not" title="Permalink to this headline">¶</a></h2>
+<p>Performs a <a class="reference external" href="https://en.wikipedia.org/wiki/Bitwise_operation#NOT">bitwise NOT</a>
+on the bits of a 16-bits register, referenced by Operand 1. The result of the
+operation will be stored in the same register.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 23%">
+<col style="width: 36%">
+<col style="width: 21%">
+<col style="width: 21%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>112 (0x70)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NOT</span> <span class="pre">A</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="notb-8-bits-bitwise-not">
+<span id="instruction-notb"></span><h2>NOTB: 8-bits bitwise NOT<a class="headerlink" href="#notb-8-bits-bitwise-not" title="Permalink to this headline">¶</a></h2>
+<p>Performs a <a class="reference external" href="https://en.wikipedia.org/wiki/Bitwise_operation#NOT">bitwise NOT</a>
+on the bits of an 8-bits register, referenced by Operand 1. The result of the
+operation will be stored in the same register.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 22%">
+<col style="width: 33%">
+<col style="width: 20%">
+<col style="width: 24%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>113 (0x71)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NOTB</span> <span class="pre">AL</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="or-16-bits-bitwise-or">
+<span id="instruction-or"></span><h2>OR: 16-bits bitwise OR<a class="headerlink" href="#or-16-bits-bitwise-or" title="Permalink to this headline">¶</a></h2>
+<p>Performs a <a class="reference external" href="https://en.wikipedia.org/wiki/Bitwise_operation#OR">bitwise OR</a>
+of two 16-bits integers. Every form of the instruction will have two
+operands. Operand 1 will always be a reference to a 16-bits register. A logic
+OR will be performed between the contents of the register and the value
+referenced by Operand 2. The result will be stored in the register referenced
+by Operand 1.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 16%">
+<col style="width: 28%">
+<col style="width: 28%">
+<col style="width: 29%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>96 (0x60)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OR</span> <span class="pre">C,</span> <span class="pre">B</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>97 (0x61)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OR</span> <span class="pre">C,</span> <span class="pre">[B]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>98 (0x62)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OR</span> <span class="pre">D,</span> <span class="pre">[0x1000]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>99 (0x63)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OR</span> <span class="pre">D,</span> <span class="pre">0xA5A5</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="orb-8-bits-bitwise-or">
+<span id="instruction-orb"></span><h2>ORB: 8-bits bitwise OR<a class="headerlink" href="#orb-8-bits-bitwise-or" title="Permalink to this headline">¶</a></h2>
+<p>Performs a <a class="reference external" href="https://en.wikipedia.org/wiki/Bitwise_operation#OR">bitwise OR</a>
+of two 8-bits integers. Every form of the instruction will have two operands.
+Operand 1 will always be a reference to an 8-bits register. A logic OR will be
+performed between the contents of the register and the value referenced by
+Operand 2. The result will be stored in the register referenced by Operand 1.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 18%">
+<col style="width: 26%">
+<col style="width: 26%">
+<col style="width: 29%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>100 (0x64)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ORB</span> <span class="pre">CH,</span> <span class="pre">BL</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>101 (0x65)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ORB</span> <span class="pre">DL,</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>102 (0x66)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ORB</span> <span class="pre">CH,</span> <span class="pre">[0x30]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>103 (0x67)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ORB</span> <span class="pre">BL,</span> <span class="pre">0xA5</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="out-write-input-output-register">
+<span id="instruction-out"></span><h2>OUT: write input/output register<a class="headerlink" href="#out-write-input-output-register" title="Permalink to this headline">¶</a></h2>
+<p>Writes the contents of General Purpose Register A into an input/output
+register. The address of the register to be written is obtained from the value
+of Operand 1. This is a priviledged instruction that can only be called when in
+Supervisor mode.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 32%">
+<col style="width: 18%">
+<col style="width: 30%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>139 (0x8B)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OUT</span> <span class="pre">C</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>140 (0x8C)</p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OUT</span> <span class="pre">[B]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>141 (0x8D)</p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OUT</span> <span class="pre">[0x1000]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>142 (0x8E)</p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OUT</span> <span class="pre">0x2</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="pop-pop-16-bits-from-stack">
+<span id="instruction-pop"></span><h2>POP: pop 16-bits from stack<a class="headerlink" href="#pop-pop-16-bits-from-stack" title="Permalink to this headline">¶</a></h2>
+<p>Pops a 16-bits value from the top of the stack and stores it into the 16-bits
+register referenced by Operand 1. The instruction will update the Stack Pointer
+(SP), increasing it by 2 units.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 21%">
+<col style="width: 37%">
+<col style="width: 21%">
+<col style="width: 21%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>67 (0x43)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">POP</span> <span class="pre">A</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="popb-pop-8-bits-from-stack">
+<span id="instruction-popb"></span><h2>POPB: pop 8-bits from stack<a class="headerlink" href="#popb-pop-8-bits-from-stack" title="Permalink to this headline">¶</a></h2>
+<p>Pops an 8-bits value from the top of the stack and stores it into the 8-bits
+register referenced by Operand 1. The instruction will update the Stack Pointer
+(SP), increasing it by 1 unit.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 21%">
+<col style="width: 34%">
+<col style="width: 21%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>68 (0x44)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">POPB</span> <span class="pre">AL</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="push-push-16-bits-to-stack">
+<span id="instruction-push"></span><h2>PUSH: push 16-bits to stack<a class="headerlink" href="#push-push-16-bits-to-stack" title="Permalink to this headline">¶</a></h2>
+<p>Pushes a 16-bits value, referenced by Operand 1, to the top of the stack. The
+instruction will update the Stack Pointer (SP), decreasing it by 2 units.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 18%">
+<col style="width: 32%">
+<col style="width: 18%">
+<col style="width: 32%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>59 (0x3B)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PUSH</span> <span class="pre">C</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>62 (0x3C)</p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PUSH</span> <span class="pre">0x2</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="pushb-push-8-bits-to-stack">
+<span id="instruction-pushb"></span><h2>PUSHB: push 8-bits to stack<a class="headerlink" href="#pushb-push-8-bits-to-stack" title="Permalink to this headline">¶</a></h2>
+<p>Pushes an 8-bits value, referenced by Operand 1, to the top of the stack. The
+instruction will update the Stack Pointer (SP), decreasing it by 1 units.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 18%">
+<col style="width: 32%">
+<col style="width: 18%">
+<col style="width: 32%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>63 (0x3F)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PUSHB</span> <span class="pre">CL</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>66 (0x40)</p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PUSHB</span> <span class="pre">0x80</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="ret-return-from-subroutine">
+<span id="instruction-ret"></span><h2>RET: return from subroutine<a class="headerlink" href="#ret-return-from-subroutine" title="Permalink to this headline">¶</a></h2>
+<p>Returns from a subroutine. The execution of this instruction will pop the
+Instruction Pointer (IP) stored in the stack and jump to the IP address. The
+instruction will update the Stack Pointer (SP).</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 26%">
+<col style="width: 26%">
+<col style="width: 26%">
+<col style="width: 21%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>71 (0x47)</p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">RET</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="shl-16-bits-logical-left-shift">
+<span id="instruction-shl"></span><h2>SHL: 16-bits logical left shift<a class="headerlink" href="#shl-16-bits-logical-left-shift" title="Permalink to this headline">¶</a></h2>
+<p>Performs a <a class="reference external" href="https://en.wikipedia.org/wiki/Logical_shift">logical left shift</a>
+of the value of a 16-bits register. Every form of the instruction will have two
+operands.  Operand 1 will always be a reference to a 16-bits register. Operand
+2 will indicate the number of bit positions that the value shall be shifted.
+The result will be stored in the register referenced by Operand 1.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 17%">
+<col style="width: 27%">
+<col style="width: 27%">
+<col style="width: 30%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>114 (0x72)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SHL</span> <span class="pre">A,</span> <span class="pre">B</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>115 (0x73)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SHL</span> <span class="pre">C,</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>116 (0x74)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SHL</span> <span class="pre">D,</span> <span class="pre">[0x1000]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>117 (0x75)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SHL</span> <span class="pre">B,</span> <span class="pre">4</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="shlb-8-bits-logical-left-shift">
+<span id="instruction-shlb"></span><h2>SHLB: 8-bits logical left shift<a class="headerlink" href="#shlb-8-bits-logical-left-shift" title="Permalink to this headline">¶</a></h2>
+<p>Performs a <a class="reference external" href="https://en.wikipedia.org/wiki/Logical_shift">logical left shift</a>
+of the value of an 8-bits register. Every form of the instruction will have two
+operands.  Operand 1 will always be a reference to an 8-bits register. Operand
+2 will indicate the number of bit positions that the value shall be shifted.
+The result will be stored in the register referenced by Operand 1.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 17%">
+<col style="width: 26%">
+<col style="width: 26%">
+<col style="width: 30%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>118 (0x76)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SHLB</span> <span class="pre">AH,</span> <span class="pre">BL</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>119 (0x77)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SHLB</span> <span class="pre">CL,</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>120 (0x78)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SHLB</span> <span class="pre">DH,</span> <span class="pre">[0x30]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>121 (0x79)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SHLB</span> <span class="pre">BL,</span> <span class="pre">4</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="shr-16-bits-logical-right-shift">
+<span id="instruction-shr"></span><h2>SHR: 16-bits logical right shift<a class="headerlink" href="#shr-16-bits-logical-right-shift" title="Permalink to this headline">¶</a></h2>
+<p>Performs a <a class="reference external" href="https://en.wikipedia.org/wiki/Logical_shift">logical right shift</a>
+of the value of a 16-bits register. Every form of the instruction will have two
+operands.  Operand 1 will always be a reference to a 16-bits register. Operand
+2 will indicate the number of bit positions that the value shall be shifted.
+The result will be stored in the register referenced by Operand 1.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 17%">
+<col style="width: 27%">
+<col style="width: 27%">
+<col style="width: 30%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>122 (0x7A)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SHR</span> <span class="pre">A,</span> <span class="pre">B</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>123 (0x7B)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SHR</span> <span class="pre">C,</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>124 (0x7C)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SHR</span> <span class="pre">D,</span> <span class="pre">[0x1000]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>125 (0x7D)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SHR</span> <span class="pre">B,</span> <span class="pre">4</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="shrb-8-bits-logical-right-shift">
+<span id="instruction-shrb"></span><h2>SHRB: 8-bits logical right shift<a class="headerlink" href="#shrb-8-bits-logical-right-shift" title="Permalink to this headline">¶</a></h2>
+<p>Performs a <a class="reference external" href="https://en.wikipedia.org/wiki/Logical_shift">logical right shift</a>
+of the value of an 8-bits register. Every form of the instruction will have two
+operands.  Operand 1 will always be a reference to an 8-bits register. Operand
+2 will indicate the number of bit positions that the value shall be shifted.
+The result will be stored in the register referenced by Operand 1.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 17%">
+<col style="width: 26%">
+<col style="width: 26%">
+<col style="width: 30%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>126 (0x7E)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SHRB</span> <span class="pre">AH,</span> <span class="pre">BL</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>127 (0x7F)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SHRB</span> <span class="pre">CL,</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>128 (0x80)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SHRB</span> <span class="pre">DH,</span> <span class="pre">[0x30]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>129 (0x81)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SHRB</span> <span class="pre">BL,</span> <span class="pre">4</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="sti-set-interrupt-mask">
+<span id="instruction-sti"></span><h2>STI: set interrupt mask<a class="headerlink" href="#sti-set-interrupt-mask" title="Permalink to this headline">¶</a></h2>
+<p>Set the Interrupt Mask Bit of the Status Register. When the register is
+cleared, the CPU interrupts are unmasked and, thus, enabled. The instruction
+has no operands. This is a priviledged instruction that can only be called when
+in Supervisor mode.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 28%">
+<col style="width: 26%">
+<col style="width: 26%">
+<col style="width: 21%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>129 (0x83)</p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><em>NONE</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">STI</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="sub-16-bits-substraction">
+<span id="instruction-sub"></span><h2>SUB: 16-bits substraction<a class="headerlink" href="#sub-16-bits-substraction" title="Permalink to this headline">¶</a></h2>
+<p>Performs a substraction of two 16-bits integers. Every form of the instruction
+will have two operands. Operand 1 will always be a reference to a 16-bits
+register. The integer contained by the register will be substracted from the
+value referenced by Operand 2. The result will be stored in the register
+referenced by Operand 1.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 16%">
+<col style="width: 27%">
+<col style="width: 27%">
+<col style="width: 30%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>25 (0x19)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SUB</span> <span class="pre">A,</span> <span class="pre">B</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>26 (0x1A)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SUB</span> <span class="pre">C,</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>27 (0x1B)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SUB</span> <span class="pre">D,</span> <span class="pre">[0x1000]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>28 (0x1C)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SUB</span> <span class="pre">B,</span> <span class="pre">12345</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="subb-8-bits-substraction">
+<span id="instruction-subb"></span><h2>SUBB: 8-bits substraction<a class="headerlink" href="#subb-8-bits-substraction" title="Permalink to this headline">¶</a></h2>
+<p>Performs a substraction of two 8-bits integers. Every form of the instruction
+will have two operands. Operand 1 will always be a reference to an 8-bits
+register. The integer contained by the register will be substracted from the
+value referenced by Operand 2. The result will be stored in the register
+referenced by Operand 1.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 16%">
+<col style="width: 26%">
+<col style="width: 26%">
+<col style="width: 32%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>29 (0x1D)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SUBB</span> <span class="pre">BH,</span> <span class="pre">DL</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>30 (0x1E)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SUBB</span> <span class="pre">CH,</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>31 (0x1F)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SUBB</span> <span class="pre">DL,</span> <span class="pre">[0x400]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>32 (0x20)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">SUBB</span> <span class="pre">BL,</span> <span class="pre">0x10</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="xor-16-bits-bitwise-xor">
+<span id="instruction-xor"></span><h2>XOR: 16-bits bitwise XOR<a class="headerlink" href="#xor-16-bits-bitwise-xor" title="Permalink to this headline">¶</a></h2>
+<p>Performs a <a class="reference external" href="https://en.wikipedia.org/wiki/Bitwise_operation#XOR">bitwise XOR</a>
+of two 16-bits integers. Every form of the instruction will have two operands.
+Operand 1 will always be a reference to a 16-bits register. A logic XOR will be
+performed between the contents of the register and the value referenced by
+Operand 2. The result will be stored in the register referenced by Operand 1.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 17%">
+<col style="width: 27%">
+<col style="width: 27%">
+<col style="width: 29%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>104 (0x68)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XOR</span> <span class="pre">C,</span> <span class="pre">B</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>105 (0x69)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XOR</span> <span class="pre">C,</span> <span class="pre">[B]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>106 (0x6A)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XOR</span> <span class="pre">D,</span> <span class="pre">[0x400]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>107 (0x6B)</p></td>
+<td><p><em>REGISTER_16BITS</em></p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XOR</span> <span class="pre">D,</span> <span class="pre">0xA5A5</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="xorb-8-bits-bitwise-xor">
+<span id="instruction-xorb"></span><h2>XORB: 8-bits bitwise XOR<a class="headerlink" href="#xorb-8-bits-bitwise-xor" title="Permalink to this headline">¶</a></h2>
+<p>Performs a <a class="reference external" href="https://en.wikipedia.org/wiki/Bitwise_operation#XOR">bitwise XOR</a>
+of two 8-bits integers. Every form of the instruction will have two operands.
+Operand 1 will always be a reference to an 8-bits register. A logic XOR will be
+performed between the contents of the register and the value referenced by
+Operand 2. The result will be stored in the register referenced by Operand 1.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 17%">
+<col style="width: 26%">
+<col style="width: 26%">
+<col style="width: 30%">
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Opcode</p></th>
+<th class="head"><p>Operand 1</p></th>
+<th class="head"><p>Operand 2</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>108 (0x6C)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XORB</span> <span class="pre">CH,</span> <span class="pre">BL</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>109 (0x6D)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>REGADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XORB</span> <span class="pre">DL,</span> <span class="pre">[A]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>110 (0x6E)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>ADDRESS</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XORB</span> <span class="pre">CH,</span> <span class="pre">[0x30]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>111 (0x6F)</p></td>
+<td><p><em>REGISTER_8BITS</em></p></td>
+<td><p><em>WORD</em></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XORB</span> <span class="pre">BL,</span> <span class="pre">0xA5</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">     
+    </div>
+
+    
+
+    
+  
+</body></html>

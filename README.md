@@ -24,7 +24,8 @@ word main() {
 $ monac gcd.mona -o gcd.asm
 ```
 
-Paste `gcd.asm` into the simulator, press Assemble and Run, and `A` holds 21.
+Paste `gcd.asm` into [the simulator](https://mrggvg.github.io/monac/simulator/), press
+Assemble and Run, and `A` holds 21.
 
 **Start with [the Mona guide](https://mrggvg.github.io/monac/)**: installing, the whole
 language, the graphics card, reading the compiler's messages and writing fast code, on
@@ -72,7 +73,8 @@ mvn package                                           # builds target/monac.jar
 java -jar target/monac.jar examples/1-basics/simple.mona --stats
 ```
 
-That writes `examples/1-basics/simple.asm`; paste it into the simulator. The guide's
+That writes `examples/1-basics/simple.asm`; paste it into
+[the simulator](https://mrggvg.github.io/monac/simulator/). The guide's
 [Getting started](https://mrggvg.github.io/monac/#start) has the rest — an alias so you
 can type `monac`, speed settings, and your first program on the display — and
 [docs/building.md](docs/building.md) covers the build and the tests.
@@ -121,6 +123,8 @@ walkthroughs next to them.
 | [Coverage](docs/design/coverage.md) | what of the machine the compiler uses, and what it does not |
 | [Roadmap](docs/design/roadmap.md) | what is done, what is not, and what was declined and why |
 | [Building and testing](docs/building.md) | the build, the test suites, and the simulator they run on |
+| [The simulator](https://mrggvg.github.io/monac/simulator/) | the machine itself, running in the browser — paste the assembly in and press Assemble |
+| [Instruction set](https://mrggvg.github.io/monac/simulator/instruction-set/) | the machine's own reference for every instruction ([provenance](docs/simulator/ATTRIBUTION.md)) |
 
 ## How it works
 
