@@ -1,0 +1,30 @@
+// expect: A=72
+// A struct is never passed by value here, so a function that changes one takes a
+// pointer. That is the whole calling convention for structs: two bytes, and the
+// callee writes through it.
+struct Point {
+    word x;
+    word y;
+};
+
+void scale(struct Point* p, word by) {
+    p->x = p->x * by;
+    p->y = p->y * by;
+}
+
+word distanceish(struct Point* a, struct Point* b) {
+    return (a->x + b->x) + (a->y + b->y);
+}
+
+word main() {
+    struct Point one;
+    struct Point two;
+    one.x = 1;
+    one.y = 2;
+    two.x = 10;
+    two.y = 20;
+
+    scale(&one, 4);            // 4, 8
+    scale(&two, 2);            // 20, 40
+    return distanceish(&one, &two);   // (4 + 20) + (8 + 40)
+}

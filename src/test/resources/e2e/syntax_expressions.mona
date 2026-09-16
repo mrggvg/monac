@@ -1,0 +1,157 @@
+// expect: A=0
+//
+// Part one of the executable half of docs/reference/language.md: literals, operators, precedence
+// and the four numeric types. Returns 0 when every claim holds, otherwise the number
+// of the check that failed.
+//
+// Split into three files because the whole of it is 7,815 bytes unoptimized and the
+// corpus runs everything at -O0 as well as -O1.
+
+/* Block comments work, including
+   across lines. */
+
+byte globalByte = 200;
+
+// ---------------------------------------------------------------- literals
+
+word checkLiterals() {
+    if (10 != 10) return 1;
+    if (0x1F != 31) return 2;                   // hexadecimal
+    if (0b1011 != 11) return 3;                 // binary
+    if ('A' != 65) return 4;
+    if ('\n' != 10) return 5;
+    if ('\x41' != 65) return 6;                 // a hex escape
+    if ('\\' != 92) return 7;
+    if ('\'' != 39) return 8;
+    if ('\0' != 0) return 9;
+    return 0;
+}
+
+// ---------------------------------------------------------------- arithmetic
+
+word checkArithmetic() {
+    word a = 65535;
+    a += 1;
+    if (a != 0) return 10;                      // word wraps at 16 bits
+    if (7 / 2 != 3) return 11;                  // division truncates
+    if (7 % 2 != 1) return 12;
+    if (1000 * 1000 != 16960) return 13;        // MUL keeps only the low 16 bits
+    if (0 - 5 != 65531) return 14;              // there is no negative word
+    if (+7 != 7) return 15;
+    return 0;
+}
+
+word checkBitwise() {
+    if ((12 & 10) != 8) return 16;
+    if ((12 | 10) != 14) return 17;
+    if ((12 ^ 10) != 6) return 18;
+    if (~0 != 65535) return 19;
+    if ((1 << 4) != 16) return 20;
+    if ((256 >> 4) != 16) return 21;
+    // Precedence is C's: + binds tighter than the shifts, which bind tighter than
+    // the comparisons, which bind tighter than & ^ |.
+    if ((4 + 5 & 7) != 1) return 22;
+    if ((1 + 2 << 3) != 24) return 23;
+    if ((2 * 3 + 4) != 10) return 24;
+    return 0;
+}
+
+// ---------------------------------------------------------------- conditions
+
+word touched = 0;
+
+word bump() {
+    touched += 1;
+    return 1;
+}
+
+word checkLogical() {
+    if (!(3 < 4)) return 25;
+    if (4 < 3) return 26;
+    if (!(3 <= 3)) return 27;
+    if (!(1 != 2 && 2 < 3)) return 28;
+    if (!(0 || 5)) return 29;
+    if (!1 != 0) return 30;                     // ! gives exactly 0 or 1
+
+    // Both operators short-circuit, so the right side must not run.
+    touched = 0;
+    if (0 && bump()) return 31;
+    if (touched != 0) return 32;
+    if (1 || bump()) touched = touched;
+    if (touched != 0) return 33;
+    if (!(1 && bump())) return 34;
+    if (touched != 1) return 35;                // and does run when it must
+    return 0;
+}
+
+word checkAssignment() {
+    word c = 100;
+    c += 5;   if (c != 105) return 36;
+    c -= 5;   if (c != 100) return 37;
+    c *= 3;   if (c != 300) return 38;
+    c /= 4;   if (c != 75) return 39;
+    c %= 40;  if (c != 35) return 40;
+    c &= 15;  if (c != 3) return 41;
+    c |= 8;   if (c != 11) return 42;
+    c ^= 1;   if (c != 10) return 43;
+    c <<= 2;  if (c != 40) return 44;
+    c >>= 3;  if (c != 5) return 45;
+    return 0;
+}
+
+// ---------------------------------------------------------------- signedness
+
+// The bits are the same; the type decides what the machine is told to do with them.
+word checkSigned() {
+    sword s = 0 - 7;
+    sword three = 3;
+    sword one = 1;
+    sword four = 4;
+    if (s / 2 != 0 - three) return 46;          // truncates toward zero
+    if (s % 2 != 0 - one) return 47;            // remainder takes the dividend's sign
+    if (s >> 1 != 0 - four) return 48;          // arithmetic shift keeps the sign
+    if (!(s < 0)) return 49;                    // and compares as signed
+
+    word u = 65529;                             // the same sixteen bits as -7
+    if (u < 0) return 50;                       // but nothing unsigned is below zero
+    if (!(u > 1000)) return 51;
+    return 0;
+}
+
+// byte narrows on store and promotes in arithmetic; sbyte does the same but its top
+// bit is a sign, so reading one widens it back to a negative word.
+word checkBytes() {
+    byte b = 250;
+    b += 10;                                    // warns: 260 truncates to 8 bits
+    if (b != 4) return 52;
+    if (globalByte + 100 != 300) return 53;     // arithmetic promotes to 16 bits
+
+    sbyte sb = 0 - 100;
+    if (!(sb < 0)) return 54;
+    sword widened = sb;
+    if (widened != 0 - 100) return 55;          // sign-extended, not zero-extended
+    byte same = 156;                            // the identical eight bits
+    if (same != 156) return 56;                 // unsigned, so it stays positive
+    return 0;
+}
+
+word checkSizeof() {
+    if (sizeof(word) != 2) return 57;
+    if (sizeof(byte) != 1) return 58;
+    if (sizeof(sword) != 2) return 59;
+    if (sizeof(sbyte) != 1) return 60;
+    if (sizeof(globalByte) != 1) return 61;     // it takes an expression too
+    return 0;
+}
+
+word main() {
+    word bad = checkLiterals();      if (bad != 0) return bad;
+    bad = checkArithmetic();         if (bad != 0) return bad;
+    bad = checkBitwise();            if (bad != 0) return bad;
+    bad = checkLogical();            if (bad != 0) return bad;
+    bad = checkAssignment();         if (bad != 0) return bad;
+    bad = checkSigned();             if (bad != 0) return bad;
+    bad = checkBytes();              if (bad != 0) return bad;
+    bad = checkSizeof();             if (bad != 0) return bad;
+    return 0;
+}

@@ -1,0 +1,109 @@
+// expect: A=0
+// maxSteps: 2000000
+//
+// examples/3-graphics/cube.mona rewrote its inner loop into a form that is faster on this
+// machine: the pixel address is carried rather than recomputed, and the error term
+// is held offset by 512 so every comparison is unsigned, with the doubling folded
+// into the thresholds. That is algebra, and algebra can be wrong — the first attempt
+// was, in a way that still drew a plausible line of the right length.
+//
+// So this runs it against textbook Bresenham over a grid of endpoints covering every
+// octant, and compares not just how many pixels each plots but which ones, in order.
+// 0 means they agree everywhere.
+
+word plotted = 0;
+word trace = 0;
+
+void plot(word addr) {
+    plotted = plotted + 1;
+    trace = trace * 31 + addr;          // order-sensitive, so a permutation fails too
+}
+
+sword absolute(sword v) {
+    if (v < 0) return 0 - v;
+    return v;
+}
+
+// Textbook Bresenham, signed, exactly as cube.mona used to have it.
+void reference(sword x0, sword y0, sword x1, sword y1) {
+    sword x = x0;
+    sword y = y0;
+    sword dx = absolute(x1 - x0);
+    sword dy = 0 - absolute(y1 - y0);
+    sword stepX = -1;
+    sword stepY = -1;
+    if (x0 < x1) stepX = 1;
+    if (y0 < y1) stepY = 1;
+    sword error = dx + dy;
+
+    while (1) {
+        plot(y * 256 + x);
+        if (x == x1 && y == y1) return;
+        sword twice = error + error;
+        if (twice >= dy) { error = error + dy; x = x + stepX; }
+        if (twice <= dx) { error = error + dx; y = y + stepY; }
+    }
+}
+
+// The version cube.mona actually ships.
+void carried(word x0, word y0, word x1, word y1) {
+    word addr = y0 * 256 + x0;
+    word last = y1 * 256 + x1;
+
+    word dx;
+    word stepX;
+    if (x1 >= x0) { dx = x1 - x0; stepX = 1;       }
+    else          { dx = x0 - x1; stepX = 0 - 1;   }
+
+    word dy;
+    word stepY;
+    if (y1 >= y0) { dy = y1 - y0; stepY = 256;     }
+    else          { dy = y0 - y1; stepY = 0 - 256; }
+
+    word e   = dx + 512 - dy;
+    word hi  = (1024 - dy + 1) >> 1;
+    word lo  = (dx + 1024) >> 1;
+    word lo2 = lo - dy;
+
+    while (1) {
+        plot(addr);
+        if (addr == last) return;
+        if (e >= hi) {
+            e = e - dy;
+            addr = addr + stepX;
+            if (e <= lo2) { e = e + dx; addr = addr + stepY; }
+        } else {
+            if (e <= lo) { e = e + dx; addr = addr + stepY; }
+        }
+    }
+}
+
+word main() {
+    word x0 = 60;
+    while (x0 < 200) {
+        word y0 = 61;
+        while (y0 < 200) {
+            word x1 = 62;
+            while (x1 < 200) {
+                word y1 = 63;
+                while (y1 < 200) {
+                    plotted = 0; trace = 0;
+                    reference(x0, y0, x1, y1);
+                    word count = plotted;
+                    word want  = trace;
+
+                    plotted = 0; trace = 0;
+                    carried(x0, y0, x1, y1);
+                    if (plotted != count) return 1;     // a different number of pixels
+                    if (trace != want) return 2;        // the same number, elsewhere
+
+                    y1 = y1 + 59;
+                }
+                x1 = x1 + 53;
+            }
+            y0 = y0 + 43;
+        }
+        x0 = x0 + 47;
+    }
+    return 0;
+}

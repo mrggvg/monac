@@ -1,0 +1,8 @@
+// expect: A=65530
+// -20 / 3 = -6, truncating toward zero as C does. The machine has only an
+// unsigned DIV, so this becomes a call to an out-of-line runtime helper.
+sword main() {
+    sword a = 0 - 20;
+    sword b = 3;
+    return a / b;
+}

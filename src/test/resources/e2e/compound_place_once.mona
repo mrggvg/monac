@@ -1,0 +1,30 @@
+// expect: A=31
+// A compound assignment or a prefix step evaluates its target once: the index, the
+// pointer and any call inside them run a single time, for the read and the write.
+word calls = 0;
+word a[4];
+
+word next() {
+    calls++;
+    return 1;
+}
+
+word main() {
+    byte buf[4] = {10, 20, 30, 40};
+    word pos = 1;
+    ++buf[pos++];                   // buf[1] becomes 21, and pos steps once
+    a[next()] += 5;                 // a[1] = 5, one call
+    ++a[next()];                    // a[1] = 6, one call
+    --a[next() + 1];                // a[2] = 65535, one call
+    word v[3] = {1, 2, 3};
+    word* p = v;
+    *p++ += 10;                     // v[0] = 11, and p moves one element
+
+    word ok = 0;
+    if (buf[1] == 21 && buf[2] == 30) ok |= 1;
+    if (pos == 2) ok |= 2;
+    if (calls == 3) ok |= 4;
+    if (a[1] == 6 && a[2] == 65535) ok |= 8;
+    if (v[0] == 11 && *p == 2) ok |= 16;
+    return ok;
+}

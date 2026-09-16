@@ -1,0 +1,7 @@
+// expect: A=100
+word twice(word n) { return n * 2; }
+word add(word a, word b) { return a + b; }
+
+word main() {
+    return twice(add(twice(10), twice(15)));
+}

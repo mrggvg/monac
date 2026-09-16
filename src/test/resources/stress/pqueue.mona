@@ -1,0 +1,186 @@
+// expect: A=0
+//
+// A priority queue that actually allocates. An array-backed binary heap is the usual
+// answer and it would touch the allocator exactly once, so this is a PAIRING HEAP:
+// every insert allocates a node and every remove frees one, and the structure is
+// held together entirely by pointers between them.
+//
+// It is a good shape for stressing this compiler as well as its allocator. A node has
+// two links and both get rewritten constantly, so almost every line is a store through
+// a pointer into a struct member — which is the exact combination that used to
+// miscompile.
+//
+// Everything is iterative, including the two-pass merge that a pairing heap's
+// delete-min needs. Written recursively it would be shorter, and the 256 bytes a
+// recursive program has to reserve for its stack is heap this would rather keep.
+
+struct Node {
+    word key;
+    struct Node* child;         // first child
+    struct Node* sibling;       // next sibling, so children are a list
+};
+
+struct Node* root = 0;
+word live = 0;
+word rng = 1;
+
+word nextRandom() {
+    rng = rng * 25173 + 13849;
+    return rng;
+}
+
+// ---------------------------------------------------------------- the heap
+
+// The whole ordering invariant lives here: the smaller key becomes the parent, and
+// the larger is pushed onto its list of children. Constant time, no loop.
+//
+// Both arguments must already be detached — sibling zero — or the link that is
+// overwritten below would lose a subtree.
+struct Node* merge(struct Node* a, struct Node* b) {
+    if (a == 0) return b;
+    if (b == 0) return a;
+
+    if (a->key <= b->key) {
+        b->sibling = a->child;
+        a->child = b;
+        return a;
+    }
+    a->sibling = b->child;
+    b->child = a;
+    return b;
+}
+
+word insert(word key) {
+    struct Node* fresh = __alloc(sizeof(struct Node));
+    if (fresh == 0) return 0;               // the heap is full, which is allowed
+    fresh->key = key;
+    fresh->child = 0;
+    fresh->sibling = 0;
+    root = merge(root, fresh);
+    live = live + 1;
+    return 1;
+}
+
+// The two-pass merge, iteratively.
+//
+// Pass one walks the sibling list left to right merging neighbours in pairs, pushing
+// each result onto a stack that is itself built out of the sibling links — no array,
+// because there is nowhere to put one that is not heap.
+//
+// Pass two folds that stack back down into a single tree. Doing it in two passes
+// rather than one long chain is what keeps the amortised cost logarithmic; folding
+// left to right in a single pass gives a linear worst case.
+struct Node* collapse(struct Node* list) {
+    struct Node* stack = 0;
+
+    while (list != 0) {
+        struct Node* a = list;
+        struct Node* b = a->sibling;
+        a->sibling = 0;
+
+        if (b == 0) {
+            list = 0;
+        } else {
+            list = b->sibling;
+            b->sibling = 0;
+        }
+
+        struct Node* pair = merge(a, b);
+        pair->sibling = stack;
+        stack = pair;
+    }
+
+    struct Node* result = 0;
+    while (stack != 0) {
+        struct Node* next = stack->sibling;
+        stack->sibling = 0;
+        result = merge(result, stack);
+        stack = next;
+    }
+    return result;
+}
+
+// Removes the smallest key and returns it. `empty` says whether there was one, since
+// zero is a perfectly good key.
+word smallest = 0;
+word removeMin() {
+    if (root == 0) return 0;
+    struct Node* gone = root;
+    smallest = gone->key;
+    root = collapse(gone->child);
+    __free(gone);
+    live = live - 1;
+    return 1;
+}
+
+// ---------------------------------------------------------------- the workload
+
+word main() {
+    word first = 0;                 // what the heap held before any of it was reused
+    word rounds = 0;
+    while (rounds < 10) {
+        // Fill until the allocator refuses, so the queue is as big as the machine
+        // allows rather than as big as a number written here.
+        word inserted = 0;
+        while (insert(nextRandom() & 2047) == 1) {
+            inserted = inserted + 1;
+            if (inserted > 3000) return 1;      // insert stopped saying no
+        }
+        if (inserted < 10) return 2;            // the heap gave us almost nothing
+        if (rounds == 0) first = inserted;
+
+        // Drain a little over half, checking the order as it comes out. This is the
+        // property that fails if a link was written to the wrong place.
+        word previous = 0;
+        word started = 0;
+        word taken = 0;
+        word half = inserted / 2;
+        while (taken < half) {
+            if (removeMin() != 1) return 3;     // ran out early
+            if (started == 1) {
+                if (smallest < previous) return 4;      // came out unordered
+            }
+            previous = smallest;
+            started = 1;
+            taken = taken + 1;
+        }
+
+        // Refill against a half-full queue, so merges happen against a real tree
+        // rather than always against a fresh one.
+        word again = 0;
+        while (insert(nextRandom() & 2047) == 1) {
+            again = again + 1;
+            if (again > 3000) return 5;
+        }
+
+        // Now empty it completely, still checking the order.
+        previous = 0;
+        started = 0;
+        word drained = 0;
+        while (root != 0) {
+            if (removeMin() != 1) return 6;
+            if (started == 1) {
+                if (smallest < previous) return 7;
+            }
+            previous = smallest;
+            started = 1;
+            drained = drained + 1;
+            if (drained > 4000) return 8;       // the queue is not shrinking
+        }
+
+        if (live != 0) return 9;                // nodes went missing on the way out
+        rounds = rounds + 1;
+    }
+
+    // Everything was freed, so the allocator has to be able to hand it all back.
+    // Against the first fill, not against a fixed floor: a leak of a few cells a round
+    // would clear any floor and would fail this.
+    word final = 0;
+    while (insert(nextRandom() & 2047) == 1) {
+        final = final + 1;
+        if (final > 3000) return 10;
+    }
+    if (final + 8 < first) return 11;           // the heap came back smaller
+
+    return 0;
+}

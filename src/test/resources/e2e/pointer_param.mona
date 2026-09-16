@@ -1,0 +1,12 @@
+// expect: A=7
+// Passing a pointer lets a function write through to the caller's variable,
+// which also means &x has to force x into the frame rather than a register.
+void setTo(word* target, word value) {
+    *target = value;
+}
+
+word main() {
+    word x = 0;
+    setTo(&x, 7);
+    return x;
+}

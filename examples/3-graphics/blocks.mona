@@ -1,0 +1,116 @@
+// A scrolling landscape, drawn with tiles nobody uploaded.
+//
+// The graphics card's tile ROM is IBM CP437, and four of its glyphs are exactly a
+// two-bit lookup:
+//
+//      0x20  blank         both halves off
+//      0xDF  upper half    top on
+//      0xDC  lower half    bottom on
+//      0xDB  solid         both on
+//
+// So every 16x16 cell is really TWO independently settable square pixels, stacked --
+// which turns the 128x128 tile map into a 128 x 256 grid of them, each cell carrying
+// its own colour, scrollable a pixel at a time, with NOT ONE BYTE of tile definitions
+// uploaded. The whole of this program's artwork is the four constants above.
+//
+// That is the cheapest picture this machine can draw. Bitmap mode costs four
+// instructions a pixel and has no scrolling; this costs two OUTs per cell of two
+// pixels, and moving the entire viewport costs two more.
+//
+// The horizontal halves (0xDD, 0xDE) are NOT usable this way: 0xDD is ten columns wide
+// against 0xDE's eight, so they overlap by two and do not tile. Only the vertical
+// split is clean, which is why this grid is tall rather than wide.
+//
+// A note on speed: in tile mode the simulator repaints the whole screen on every
+// VIDDATA write, so the initial draw below -- a few hundred cells -- takes a noticeable
+// moment in the browser before the scrolling starts. The scrolling itself is two writes
+// a frame and is instant.
+
+enum Port { VIDMODE = 7, VIDADDR = 8, VIDDATA = 9 };
+enum { MODE_TILE = 1 };
+
+const word HSCROLL  = 41730;    // 0xA302, a big-endian word
+const word BGCOLOUR = 41728;    // 0xA300; the byte that matters is 0xA301
+
+const word COLUMNS   = 64;      // of the 128 the map has, so 1024 pixels wide
+const word CELL_ROWS = 16;      // the window is 16 cells tall
+const word SUB_ROWS  = 32;      // ...which is 32 half-cells
+
+// Terrain fills from the bottom up, so a cell is only ever sky, solid, or lit in its
+// lower half — the upper-half glyph has no use here, though a cave would want it.
+enum Glyph { TILE_LOWER = 0xDC, TILE_SOLID = 0xDB };
+
+byte height[COLUMNS];           // terrain top, in half-cells from the bottom
+
+word rng = 24601;
+
+word nextRandom() {
+    rng = rng * 25173 + 13849;
+    return rng >> 8;
+}
+
+void setCell(word x, word y, word tile, word colour) {
+    __out(VIDADDR, (y * 128 + x) * 2);
+    __out(VIDDATA, tile * 256 + colour);
+}
+
+// A random walk rather than a random height, so the skyline is a landscape and not a
+// picket fence.
+void buildTerrain() {
+    word h = 14;
+    for (word x = 0; x < COLUMNS; x++) {
+        word step = nextRandom() & 3;
+        if (step == 0 && h > 5) h--;
+        if (step == 1 && h < 26) h++;
+        height[x] = h & 255;
+    }
+}
+
+// Colour by depth below the surface: grass on top, then earth, then rock. The palette
+// is the 3-3-2 cube, so index = red * 32 + green * 4 + blue.
+word colourFor(word depth) {
+    if (depth < 2) return 1 * 32 + 7 * 4;       // bright green
+    if (depth < 6) return 1 * 32 + 4 * 4;       // duller green
+    if (depth < 12) return 2 * 32 + 2 * 4;      // earth
+    return 1 * 32 + 1 * 4 + 1;                  // rock
+}
+
+// Only the filled cells are written. Everything the program never touches is tile 0,
+// which CP437 leaves blank, so the sky costs nothing at all — and the loop starts at
+// the first cell with any ground in it rather than testing every cell above it.
+void drawTerrain() {
+    for (word x = 0; x < COLUMNS; x++) {
+        word surface = SUB_ROWS - height[x];    // the topmost filled half-cell
+        for (word cy = surface >> 1; cy < CELL_ROWS; cy++) {
+            word row = cy * 2;
+            if (row >= surface) {
+                setCell(x, cy, TILE_SOLID, colourFor(row - surface));
+            } else {
+                setCell(x, cy, TILE_LOWER, colourFor(0));   // the surface itself
+            }
+        }
+    }
+}
+
+word main() {
+    __out(VIDMODE, MODE_TILE);
+
+    __out(VIDADDR, BGCOLOUR);
+    __out(VIDDATA, 2 * 32 + 4 * 4 + 3);         // sky: a pale blue
+
+    buildTerrain();
+    drawTerrain();
+
+    // The map is 64 cells wide, so 1024 pixels, and the window shows 256 of them.
+    // Ping-pong across the rest rather than snapping back at the end.
+    word scroll = 0;
+    word delta = 2;
+    while (1) {
+        __waitframe();                          // the card's own 50 Hz
+        __out(VIDADDR, HSCROLL);
+        __out(VIDDATA, scroll);
+        scroll += delta;
+        if (scroll == 0 || scroll == 768) delta = 0 - delta;   // 768 = 1024 - 256
+    }
+    return 0;                                   // never reached; the loop is the program
+}

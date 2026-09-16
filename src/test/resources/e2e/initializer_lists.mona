@@ -1,0 +1,66 @@
+// expect: A=0
+// maxSteps: 60000
+//
+// Initializer lists. Returns 0 when every claim holds, otherwise the failing check.
+
+struct Point { word x; word y; };
+struct Named { byte tag; word value; byte text[4]; };
+
+word primes[5] = {2, 3, 5, 7, 11};
+word partial[6] = {1, 2};                   // the rest are zero
+word counted[] = {10, 20, 30, 40,};         // four, counted, and a trailing comma
+byte greeting[] = "hi";                     // three bytes with the terminator
+byte padded[6] = "ok";
+struct Point corner = {3, 4};
+struct Point path[3] = {{1, 2}, {3, 4}};    // the third is zero
+struct Point flat[2] = {5, 6, 7, 8};        // brace elision
+struct Named named = {'a', 1000, "xyz"};
+const byte* colors[3] = {"red", "green", "blue"};
+sword signs[3] = {-1, 0, 1};
+const byte* motto = "mona";
+
+word one() { return 1; }
+word two() { return 2; }
+word handlers[2] = {(word)&one, (word)&two};  // never called: kept for the table's sake
+
+word main() {
+    if (primes[0] != 2 || primes[4] != 11) return 1;
+    if (partial[1] != 2 || partial[2] != 0 || partial[5] != 0) return 2;
+    if (sizeof(counted) != 8 || counted[3] != 40) return 3;
+    if (sizeof(greeting) != 3 || greeting[1] != 'i' || greeting[2] != 0) return 4;
+    if (padded[1] != 'k' || padded[2] != 0 || padded[5] != 0) return 5;
+    if (corner.x != 3 || corner.y != 4) return 6;
+    if (path[1].y != 4 || path[2].x != 0) return 7;
+    if (flat[1].x != 7 || flat[1].y != 8) return 8;
+    if (named.tag != 'a' || named.value != 1000) return 9;
+    if (named.text[2] != 'z' || named.text[3] != 0) return 10;
+    if (__strcmp(colors[1], "green") != 0) return 11;
+    if (signs[0] >= 0 || signs[2] != 1) return 12;
+    if (__strlen(motto) != 4) return 13;
+    if (handlers[0] == 0 || handlers[0] == handlers[1]) return 14;
+    const word count = sizeof(counted) / sizeof(counted[0]);
+    if (count != 4) return 15;
+
+    // Locals may use values only known at run time; anything unsaid is zero.
+    word n = 7;
+    word local[4] = {n, n * 2};
+    if (local[0] != 7 || local[1] != 14 || local[2] != 0 || local[3] != 0) return 16;
+    struct Point p = {n, n + 1};
+    if (p.x != 7 || p.y != 8) return 17;
+    byte text[8] = "abc";
+    if (__strlen(text) != 3 || text[7] != 0) return 18;
+    word big[24] = {1, 2, 3};                   // cleared by a call, then stored
+    if (big[0] != 1 || big[2] != 3 || big[3] != 0 || big[23] != 0) return 19;
+    // Static, so data in the image rather than stores: a frame holds 128 bytes.
+    static word grid[4][40] = {{1}, {2}, {3}, {4}};
+    if (grid[1][0] != 2 || grid[3][0] != 4 || grid[3][39] != 0) return 20;
+    static byte dense[130] = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+    if (dense[128] != 'x' || dense[129] != 0) return 21;
+    word unsized[] = {4, 5, 6};
+    if (sizeof(unsized) != 6 || unsized[2] != 6) return 22;
+    static word kept[2] = {100, 200};
+    if (kept[1] != 200) return 23;
+    word braced = {9};
+    if (braced != 9) return 24;
+    return 0;
+}

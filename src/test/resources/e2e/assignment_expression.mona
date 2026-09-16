@@ -1,0 +1,7 @@
+// expect: A=7
+word main() {
+    word a = 0;
+    word b = 0;
+    a = b = 7;
+    return a;
+}

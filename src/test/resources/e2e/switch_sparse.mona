@@ -1,0 +1,11 @@
+// expect: A=20
+// Labels far apart, so a table would be mostly holes and an if-chain wins.
+word f(word n) {
+    switch (n) {
+        case 1: return 10;
+        case 500: return 20;
+        default: return 30;
+    }
+}
+
+word main() { return f(500); }

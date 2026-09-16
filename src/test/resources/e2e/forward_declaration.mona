@@ -1,0 +1,61 @@
+// expect: A=0
+//
+// Prototypes. Returns 0 when every claim holds, otherwise the failing check.
+
+struct Point {
+    word x;
+    word y;
+};
+
+// Mutual recursion, declared the way C source declares it.
+word is_even(word n);
+word is_odd(word);              // the name is optional in a prototype
+
+// A prototype may repeat, as long as every copy agrees.
+word is_even(word n);
+
+word manhattan(struct Point* p);
+void bump(void);                // C's spelling of "no parameters"
+
+word counter = 0;
+
+word is_even(word n) {
+    if (n == 0) return 1;
+    return is_odd(n - 1);
+}
+
+word is_odd(word n) {
+    if (n == 0) return 0;
+    return is_even(n - 1);
+}
+
+word main(void) {
+    if (is_even(10) != 1) return 1;
+    if (is_odd(7) != 1) return 2;
+    if (is_even(7) != 0) return 3;
+
+    bump();
+    bump();
+    bump();
+    if (counter != 3) return 4;
+
+    struct Point p;
+    p.x = 3;
+    p.y = 4;
+    if (manhattan(&p) != 7) return 5;
+
+    if (sum3(1, 2, 3) != 6) return 6;
+    return 0;
+}
+
+void bump(void) {
+    counter++;
+}
+
+word manhattan(struct Point* p) {
+    return p->x + p->y;
+}
+
+// A prototype may also follow its definition.
+sword sum3(sword a, sword b, sword c) { return a + b + c; }
+sword sum3(sword, sword, sword);

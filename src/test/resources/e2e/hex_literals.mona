@@ -1,0 +1,6 @@
+// expect: A=255
+word main() {
+    word a = 0x0F;
+    word b = 0b1111;
+    return a * 16 + b;
+}

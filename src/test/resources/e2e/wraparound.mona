@@ -1,0 +1,6 @@
+// expect: A=65535
+// 16-bit unsigned wraparound. Also checks that we never try to emit a negative
+// immediate, which the assembler rejects outright.
+word main() {
+    return 0 - 1;
+}

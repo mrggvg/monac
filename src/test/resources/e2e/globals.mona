@@ -1,0 +1,11 @@
+// expect: A=1107
+// Globals become DW/DB directives after the code; there is no startup code to
+// run initializers, so they must fold to constants.
+word counter = 100;
+byte flag = 7;
+
+word main() {
+    counter = counter + flag;
+    counter += 1000;
+    return counter;
+}

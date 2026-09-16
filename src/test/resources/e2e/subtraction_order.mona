@@ -1,0 +1,5 @@
+// expect: A=5
+// SUB is not commutative; getting the operand order wrong yields 65531 here.
+word main() {
+    return 10 - 3 - 2;
+}

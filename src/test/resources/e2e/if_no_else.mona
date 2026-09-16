@@ -1,0 +1,7 @@
+// expect: A=1
+word main() {
+    word r = 0;
+    if (1) r = 1;
+    if (0) r = 99;
+    return r;
+}

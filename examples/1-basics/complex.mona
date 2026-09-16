@@ -1,0 +1,40 @@
+// A little of everything the expression language has: an enum, a switch, the
+// conditional operator, signed arithmetic, compound assignment, ++, a do/while and a
+// recursive call. It returns 2324.
+
+enum Op { ADD, SUB, MUL, DIV, MOD };
+
+const word N = 6;               // a const with a constant value is a constant
+
+// Signed, so the division and the remainder round toward zero, as in C. The machine
+// has only an unsigned DIV and no MOD at all; the compiler supplies both.
+sword apply(enum Op op, sword a, sword b) {
+    switch (op) {
+        case ADD: return a + b;
+        case SUB: return a - b;
+        case MUL: return a * b;
+        case DIV: return a / b;
+        case MOD: return a % b;
+    }
+    return 0;
+}
+
+word factorial(word n) {
+    return n <= 1 ? 1 : n * factorial(n - 1);
+}
+
+word main() {
+    sword acc = 100;
+    for (enum Op op = ADD; op <= MOD; op++) {
+        acc = apply(op, acc, -7);           // 93, 100, -700, 100, 2
+    }
+
+    word digits = 0;
+    word n = factorial(N);                  // 720
+    do {
+        digits++;
+        n /= 10;
+    } while (n != 0);                       // three digits
+
+    return (word)acc * 1000 + digits * 100 + factorial(4);    // 2000 + 300 + 24
+}

@@ -1,0 +1,130 @@
+// A stopwatch.
+//
+// Counts hours, minutes and seconds on the memory-mapped text display, driven by
+// the timer interrupt. Press SPACE to reset it back to zero.
+//
+// Two devices share the one interrupt vector at 0x0003, so there is one handler and
+// it works out who asked by reading IRQSTATUS. The timer is the clock; the keypad is
+// the reset button. Neither is polled — the program spends its time in a loop that
+// does nothing until an interrupt says the display is out of date.
+//
+// CALIBRATION. The timer counts *instructions*, not time, because every instruction
+// on this machine costs exactly one clock tick. So one second is however many
+// instructions the simulator executes in a second, which is the speed you picked
+// from the Speed menu. With the preload left at 1000, TICKS_PER_SECOND is just the
+// speed in kHz:
+//
+//     1 kHz  ->  1        10 kHz  ->  10        50 kHz  ->  50
+//     5 kHz  ->  5        20 kHz  ->  20
+//
+// The default speed is 4 Hz, which is for stepping through code rather than running
+// it. Pick 10 kHz to watch this tick at something like real time.
+
+// ---------------------------------------------------------------- ports
+
+// An enum rather than variables: an enumerator is a constant, so each __in and __out
+// below is one instruction with the port as an immediate.
+enum Port { IRQMASK = 0, IRQSTATUS = 1, IRQEOI = 2, TMRPRELOAD = 3, KBDDATA = 6 };
+enum Irq  { KEYPAD = 1, TIMER = 2 };            // bits of IRQMASK and IRQSTATUS
+
+const word TIMER_PRELOAD    = 1000;   // instructions between timer interrupts
+const word TICKS_PER_SECOND = 10;     // ...so this many of them make one second
+
+word hours   = 0;
+word minutes = 0;
+word seconds = 0;
+word ticks   = 0;               // timer interrupts so far this second
+word dirty   = 1;               // the display no longer matches the count
+
+// ---------------------------------------------------------------- the display
+
+// Thirty-two characters of text display, memory mapped at 0x1000. A const pointer
+// with a constant value is itself a constant, so every SCREEN[i] below is a store to
+// a fixed address plus an index, with nothing loaded first.
+byte* const SCREEN = 4096;
+
+// Two digits, zero-padded, which is the whole reason the display reads 09 and not 9.
+// The second % 10 keeps a three-digit value inside its two columns rather than
+// spilling a character sideways — and it is also what lets the compiler see that the
+// result fits in a byte, so this narrows without a warning.
+void putNumber(word at, word value) {
+    SCREEN[at]     = '0' + value / 10 % 10;
+    SCREEN[at + 1] = '0' + value % 10;
+}
+
+void putText(word at, const byte* text) {
+    while (*text != 0) SCREEN[at++] = *text++;
+}
+
+void render() {
+    putNumber(10, hours);
+    putNumber(13, minutes);
+    putNumber(16, seconds);
+}
+
+// ---------------------------------------------------------------- the clock
+
+// Each unit rolls into the next only when it wraps, so most seconds return from the
+// first line.
+void tickSecond() {
+    if (++seconds < 60) return;
+    seconds = 0;
+    if (++minutes < 60) return;
+    minutes = 0;
+    if (++hours == 24) hours = 0;
+}
+
+void reset() {
+    hours = 0;
+    minutes = 0;
+    seconds = 0;
+    ticks = 0;
+}
+
+// ---------------------------------------------------------------- the handler
+
+// Short on purpose. Everything here runs with the main loop suspended, so it counts
+// and sets a flag; drawing is the loop's job.
+void onIrq() {
+    word pending = __in(IRQSTATUS);     // who is asking
+
+    if (pending & KEYPAD) {
+        // Reading KBDDATA is what lowers the keypad's request, so it is read whatever
+        // the key turns out to be.
+        if (__in(KBDDATA) == ' ') {
+            reset();
+            dirty = 1;
+        }
+    }
+
+    if (pending & TIMER) {
+        if (++ticks >= TICKS_PER_SECOND) {
+            ticks = 0;
+            tickSecond();
+            dirty = 1;
+        }
+    }
+
+    __out(IRQEOI, pending);             // acknowledge exactly what was handled
+}
+
+word main() {
+    // The whole line once, digits included; after this only the digits change.
+    putText(0, "STOPWATCH 00:00:00 SPACE=RESET");
+
+    __setisr(&onIrq);
+    __out(IRQMASK, KEYPAD | TIMER);
+    __out(TMRPRELOAD, TIMER_PRELOAD);   // start the countdown
+    __sti();
+
+    // Clearing the flag before drawing, not after: an interrupt that lands halfway
+    // through a render sets it again, so the next pass redraws rather than leaving
+    // half of one time and half of the next on screen.
+    while (1) {
+        if (dirty != 0) {
+            dirty = 0;
+            render();
+        }
+    }
+    return 0;
+}

@@ -1,0 +1,27 @@
+// expect: A=129
+// Frame-pointer elimination names every local and parameter relative to SP, which
+// moves under it as arguments are pushed. This calls a three-argument function from
+// inside expressions that themselves read locals, so the same slot is addressed at
+// several different stack depths within one function.
+//
+//   acc = 10
+//   n   = sum3(10, 11, 12) = 33
+//   acc = 43, which is not above 100
+//   return sum3(43, 43, 43) = 129
+word sum3(word a, word b, word c) {
+    return a + b + c;
+}
+
+word mix(word seed) {
+    word acc = seed;
+    word n = sum3(acc, acc + 1, acc + 2);
+    acc = acc + n;
+    if (acc > 100) {
+        return sum3(acc, 0, 0);
+    }
+    return sum3(acc, acc, acc);
+}
+
+word main() {
+    return mix(10);
+}

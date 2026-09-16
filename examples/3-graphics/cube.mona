@@ -1,0 +1,227 @@
+// A rotating wireframe cube, in bitmap mode.
+//
+// The cube is defined in normalized coordinates — every corner is at -1 or +1 on
+// each axis — spun about the vertical axis, projected with perspective, and drawn
+// as twelve lines. It turns like a turntable; rotating about a different axis is a
+// one-line change in `rotate`.
+//
+// This machine has no floating point, so everything below is FIXED POINT: a value
+// is stored multiplied by 128, and 1.0 is written as 128. Multiplying two of them
+// gives a result scaled by 128 * 128, so every product is shifted back down by 7.
+//
+//     1.0   ->   128           0.5   ->    64          -1.0  ->  -128
+//
+// The scale is 128 and not 256 for a reason worth knowing. MUL on this machine is
+// 16 by 16 into 16 bits — the top half of the product is simply gone. A rotation
+// computes x * cos + z * sin, and the largest that can be is sqrt(2), so with a
+// scale of 128 the widest intermediate is about 23170, just inside a signed 16-bit
+// word. At a scale of 256 it would be 92680 and every corner would wrap.
+//
+// The graphics card is 256 by 256 with one byte per pixel, and its 64 KB of video
+// memory is a separate space that no pointer in the program can reach. Writing a
+// pixel is two instructions: the address into VIDADDR, the colour into VIDDATA.
+// Clearing the whole screen is one, because VIDMODE 3 means clear.
+//
+// SPEED. A frame is 13,958 instructions, down from 26,087, drawing exactly the same
+// pixels. Nine tenths of a frame is the inner loop of `line`, so that is the only
+// place where anything was worth doing, and the comment there explains each of the
+// four changes. Everything else is written for clarity: `rotate` runs eight times a
+// frame, and the two helpers it leans on — an arithmetic shift and a signed divide,
+// neither of which the machine has — are together under 3% of a frame. The tables
+// are initializer lists, so they are data in the image and nothing runs to set up.
+
+// ---------------------------------------------------------------- ports
+
+// An enum, not variables: an enumerator is a constant, so every __out below takes its
+// port as an immediate. OUT accepts nothing else but a register, and a port held in a
+// global would cost a load into one — see point 1 in the comment on `line`.
+enum Port { VIDMODE = 7, VIDADDR = 8, VIDDATA = 9 };
+enum Mode { MODE_BITMAP = 2, MODE_CLEAR = 3 };
+
+// ---------------------------------------------------------------- geometry
+
+// const scalars with constant values are constants: they cost no memory and fold
+// into the instructions that use them.
+const sword ONE    = 128;        // 1.0 in fixed point
+const sword FOCAL  = 140;        // eye-to-screen distance, in pixels
+const sword DEPTH  = 512;        // 4.0: how far the cube sits in front of the eye
+const sword CENTRE = 128;        // the middle of a 256-pixel screen
+
+// sin(k * 90 / 16 degrees) * 128, for k = 0..16. A quarter turn is all that has to
+// be stored; the other three follow from symmetry, in `sine` below. An initializer
+// list on a global is data in the image, so no code runs to build the table.
+const sword quarter[17] = {
+    0, 13, 25, 37, 49, 60, 71, 81, 91, 99, 106, 113, 118, 123, 126, 127, 128
+};
+
+// The cube's eight corners, one component per array, at -1 or +1. The corner index
+// is a bit pattern: bit 0 is x, bit 1 is y, bit 2 is z.
+const sword cx[8] = {-ONE,  ONE, -ONE,  ONE, -ONE,  ONE, -ONE,  ONE};
+const sword cy[8] = {-ONE, -ONE,  ONE,  ONE, -ONE, -ONE,  ONE,  ONE};
+const sword cz[8] = {-ONE, -ONE, -ONE, -ONE,  ONE,  ONE,  ONE,  ONE};
+
+// Where each corner landed on the screen, after rotating and projecting. Both stay
+// inside 0..255 — the projection can move a corner about 66 pixels from the centre
+// — which is what lets `line` treat a screen position as an unsigned number.
+word sx[8];
+word sy[8];
+
+// The twelve edges, as pairs of corner indices. Two corners share an edge when
+// their indices differ in exactly one bit: four along x, four along y, four along z.
+const word ea[12] = {0, 2, 4, 6,   0, 1, 4, 5,   0, 1, 2, 3};
+const word eb[12] = {1, 3, 5, 7,   2, 3, 6, 7,   4, 5, 6, 7};
+
+word angle = 0;                 // 0..63, so one step is 5.625 degrees
+
+// ---------------------------------------------------------------- fixed point
+
+// sin(step * 5.625 degrees) * 128, for step in 0..63, folded out of the quarter
+// table. Quadrant two mirrors quadrant one, and the lower half is the negative of
+// the upper half.
+sword sine(word step) {
+    word s = step & 63;
+    if (s < 16) return quarter[s];
+    if (s < 32) return quarter[32 - s];
+    if (s < 48) return -quarter[s - 32];
+    return -quarter[64 - s];
+}
+
+sword cosine(word step) {
+    return sine(step + 16);
+}
+
+// ---------------------------------------------------------------- the screen
+
+// Bresenham, in integers, which is why it is the line algorithm every machine like
+// this one ends up using: no division, no fractions, one add and one compare per
+// pixel. Nine tenths of a frame happens between the braces below, so this is the
+// one function in the program written for the machine rather than for the reader.
+//
+// Four things are going on, and all four were measured rather than assumed.
+//
+//  1. THE TWO WRITES ARE SPELLED OUT rather than calling a plot() helper, and the
+//     ports are enum constants rather than globals. A call costs a push per
+//     argument, the call, the return and the stack reclaim — once per pixel, across
+//     some seven hundred pixels a frame, that is most of a frame. And OUT takes a
+//     port as an immediate or from a register and nothing else, so a port held in a
+//     global has to be loaded into a register first; with every register busy the
+//     compiler frees one, PUSH / load / OUT / POP, where OUT 8 does. An enumerator,
+//     or a const with a constant value, is the immediate.
+//
+//  2. THE PIXEL ADDRESS IS CARRIED, not recomputed. `y * 256 + x` is three
+//     instructions every pixel. Stepping x means adding 1 to the address and
+//     stepping y means adding 256, so the address can simply be walked — and the
+//     end of the line is one address to compare against instead of two coordinates.
+//
+//  3. EVERY VALUE IS UNSIGNED. This machine has no sign flag, so a signed compare
+//     is done by flipping the top bit of both operands first: two extra
+//     instructions each, four per pixel, for the two tests below. Bresenham's error
+//     term is the only thing here that wants to be negative, so it is stored offset
+//     by 512 and the two thresholds are offset to match. `e` never leaves
+//     [129, 895], every comparison is unsigned, and the biasing disappears.
+//
+//  4. BOTH TESTS ARE ABOUT THE ERROR ON ENTRY. The obvious way to write that is to
+//     copy it into a temporary first, and the obvious way is a third live value in a
+//     loop that has two registers to hand out. Instead the first branch tests
+//     against `lo2`, which is `lo` adjusted by exactly what the first update did, so
+//     both arms test the entry value without anyone having to hold it. Worth 8%.
+//     Letting the second test simply read the updated `e` would be a line-drawing
+//     algorithm, but a different one, drawing a different set of pixels.
+//
+// Together: 26,087 instructions a frame to 15,431, drawing pixel-for-pixel the same
+// picture. The floor is four instructions a pixel — OUT can only send the
+// accumulator, and VIDADDR does not auto-advance, so both writes cost two — and the
+// rest is Bresenham.
+//
+// The compiler then took it to 13,958 without a change here. `e = e - dy` used to
+// be three instructions — into a scratch, subtract, copy back — and each `e + dx`
+// the same. That was not a limit of the loop, as this comment used to say. Copy
+// propagation made the test below read the subtraction's temporary rather than `e`,
+// which kept the two apart, and the coalescer's safety test refused merges it could
+// have made. With both fixed each update is one instruction on `e` in its register.
+void line(word x0, word y0, word x1, word y1) {
+    word addr = y0 * 256 + x0;
+    word last = y1 * 256 + x1;
+
+    // The magnitude of each span, and what one step along it does to the address.
+    word dx;
+    word stepX;
+    if (x1 >= x0) { dx = x1 - x0; stepX = 1;       }
+    else          { dx = x0 - x1; stepX = 0 - 1;   }
+
+    word dy;
+    word stepY;
+    if (y1 >= y0) { dy = y1 - y0; stepY = 256;     }
+    else          { dy = y0 - y1; stepY = 0 - 256; }
+
+    // Bresenham keeps `error`, which starts at dx - dy and stays inside
+    // [-383, 383]. Held as e = error + 512 it is never negative, and the two tests
+    //
+    //     2 * error >= -dy        2 * error <= dx
+    //
+    // become e >= hi and e <= lo, with the doubling folded into the thresholds.
+    word e   = dx + 512 - dy;
+    word hi  = (1024 - dy + 1) >> 1;
+    word lo  = (dx + 1024) >> 1;
+    word lo2 = lo - dy;             // the second test, against e after the first update
+
+    while (1) {
+        __out(VIDADDR, addr);
+        __out(VIDDATA, 15);             // azure, r0 g3 b3 of the RGB cube
+        if (addr == last) return;
+        if (e >= hi) {
+            e = e - dy;
+            addr = addr + stepX;
+            if (e <= lo2) { e = e + dx; addr = addr + stepY; }
+        } else {
+            if (e <= lo) { e = e + dx; addr = addr + stepY; }
+        }
+    }
+}
+
+// ---------------------------------------------------------------- the pipeline
+
+// Spin about the vertical axis and project, filling sx and sy.
+//
+//     x' = x cos + z sin
+//     z' = z cos - x sin
+//
+// y is untouched, which is what makes this a turntable rather than a tumble. For a
+// tumble about the horizontal axis, rotate y and z here instead.
+void rotate() {
+    sword c = cosine(angle);
+    sword s = sine(angle);
+
+    for (word i = 0; i < 8; i++) {
+        sword x = (cx[i] * c + cz[i] * s) >> 7;
+        sword z = (cz[i] * c - cx[i] * s) >> 7;
+        sword y = cy[i];
+
+        // Perspective: the further away, the smaller. Dividing by the depth is what
+        // makes the near face larger than the far one, and that is the entire
+        // illusion — an orthographic cube reads as a flat hexagon.
+        sword depth = z + DEPTH;
+        sx[i] = CENTRE + x * FOCAL / depth;
+        sy[i] = CENTRE - y * FOCAL / depth;
+    }
+}
+
+void draw() {
+    for (word e = 0; e < 12; e++) {
+        word a = ea[e];
+        word b = eb[e];
+        line(sx[a], sy[a], sx[b], sy[b]);
+    }
+}
+
+word main() {
+    __out(VIDMODE, MODE_BITMAP);
+
+    while (1) {
+        __out(VIDMODE, MODE_CLEAR);     // one instruction erases all 65536 pixels
+        rotate();
+        draw();
+        angle = (angle + 1) & 63;
+    }
+    return 0;
+}

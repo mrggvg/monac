@@ -1,0 +1,17 @@
+// expect: A=37
+// A struct local costs nothing a plain local does not: its members land at fixed
+// frame displacements, so p.x is [SP+1] and one instruction, not an address
+// computed into a register.
+struct Point {
+    word x;
+    word y;
+};
+
+word main() {
+    struct Point p;
+    p.x = 3;
+    p.y = 4;
+    p.x = p.x * 10;
+    p.y = p.y + 3;
+    return p.x + p.y;
+}

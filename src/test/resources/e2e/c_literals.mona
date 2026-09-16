@@ -1,0 +1,16 @@
+// expect: A=63
+// Every integer and character constant C has, with the value C gives it.
+word main() {
+    word ok = 0;
+    if (017 == 15 && 00 == 0 && 0 == 0) ok |= 1;                       // octal
+    if (0xAA == 170 && 0XfF == 255 && 0b1010'1010 == 0xAA && 0B11 == 3) ok |= 2;
+    if (1'000 == 1000 && 0x1'00 == 256 && 0'17 == 15) ok |= 4;          // C23 separators
+    if (10u == 10 && 10UL == 10 && 10ll == 10 && 0xFFu == 255 && 7LLU == 7) ok |= 8;
+    if ('\101' == 65 && '\a' == 7 && '\f' == 12 && '\v' == 11 && '\?' == 63) ok |= 16;
+
+    byte b = 0xaa;
+    const byte* s = "\x41\102\0!";
+    if (b == 0b1010'1010 && s[0] == 'A' && s[1] == 'B' && s[2] == 0 && s[3] == '!'
+            && '\x041' == 'A') ok |= 32;
+    return ok;
+}

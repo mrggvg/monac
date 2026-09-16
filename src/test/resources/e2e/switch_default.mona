@@ -1,0 +1,12 @@
+// expect: A=999
+word classify(word n) {
+    switch (n) {
+        case 0: return 100;
+        case 1: return 101;
+        case 2: return 102;
+        case 3: return 103;
+        default: return 999;
+    }
+}
+
+word main() { return classify(77); }

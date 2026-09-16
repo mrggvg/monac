@@ -1,0 +1,15 @@
+// expect: A=5
+// display: MONA5
+word copy(byte* to, byte* from) {
+    word n = 0;
+    while (from[n] != 0) {
+        to[n] = from[n];
+        n += 1;
+    }
+    return n;
+}
+
+word main() {
+    byte* screen = 4096;
+    return copy(screen, "MONA5");
+}

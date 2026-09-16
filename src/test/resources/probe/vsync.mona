@@ -1,0 +1,23 @@
+// Counts the graphics card's own refresh interrupt, and returns the count, so A says
+// both that it fired and how many times.
+//
+// Run it with probe/vsync.js -- not through the normal oracle. See that file for why.
+word ticks = 0;
+
+void onIrq() {
+    word pending = __in(1);         // IRQSTATUS
+    if (pending & 4) {              // bit 2: the graphics card's 50 Hz refresh
+        ticks = ticks + 1;
+    }
+    __out(2, pending);              // IRQEOI
+}
+
+word main() {
+    __setisr(&onIrq);
+    __out(0, 4);                    // IRQMASK: the graphics card only
+    __out(7, 1);                    // VIDMODE 1 -- turning the display on is what
+    __sti();                        // starts the refresh, and so the interrupt
+    while (ticks < 25) { }
+    __cli();
+    return ticks;
+}

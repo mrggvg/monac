@@ -1,0 +1,27 @@
+// expect: A=0
+//
+// Unions. Returns 0 when every claim holds, otherwise the failing check.
+
+union Word { word whole; byte halves[2]; };
+struct Tagged { byte kind; union Word value; };
+union Word preset = {0x1234};               // a union's initializer fills its first member
+
+word main() {
+    union Word w;
+    w.whole = 0xABCD;
+    if (w.halves[0] != 0xAB || w.halves[1] != 0xCD) return 1;   // big-endian
+    if (sizeof(w) != 2) return 2;
+    w.halves[1] = 0x01;
+    if (w.whole != 0xAB01) return 3;
+
+    struct Tagged t;
+    t.kind = 1;
+    t.value.whole = 7;
+    if (sizeof(t) != 3 || t.value.halves[1] != 7) return 4;
+    if (preset.halves[0] != 0x12) return 5;
+
+    union Word* p = &w;
+    p->whole = 5;
+    if (w.halves[1] != 5) return 6;
+    return 0;
+}

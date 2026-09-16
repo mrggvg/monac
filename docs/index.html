@@ -1,0 +1,1893 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mona — a C-like language for the 16-bit Assembly Simulator (Sistemi I, FAMNIT)</title>
+<meta name="description" content="Mona is a small C-like language that compiles to assembly for the 16-bit Assembly Simulator used in Sistemi I at UP FAMNIT. The whole language, on one page.">
+<link rel="canonical" href="https://mrggvg.github.io/monac/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://mrggvg.github.io/monac/">
+<meta property="og:site_name" content="Mona">
+<meta property="og:title" content="Mona — a C-like language for the 16-bit Assembly Simulator">
+<meta property="og:description" content="monac compiles Mona to assembly for the 16-bit Assembly Simulator used in Sistemi I at UP FAMNIT: four registers, 4 KB of RAM, a graphics card. The whole language, on one page.">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareSourceCode",
+  "name": "monac",
+  "description": "A compiler for Mona, a small C-like language targeting the 16-bit Assembly Simulator used in the Sistemi I / Systems I course at UP FAMNIT.",
+  "url": "https://mrggvg.github.io/monac/",
+  "codeRepository": "https://github.com/mrggvg/monac",
+  "programmingLanguage": [{"@type": "ComputerLanguage", "name": "Mona"}, {"@type": "ComputerLanguage", "name": "Java"}],
+  "runtimePlatform": "Java 21",
+  "license": "https://unlicense.org/",
+  "keywords": "Mona, monac, compiler, 16-bit Assembly Simulator, assembly, Sistemi I, Systems I, FAMNIT, University of Primorska"
+}
+</script>
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#0e1116">
+<style>
+/* ---------------------------------------------------------------- tokens */
+:root {
+  --bg: #0e1116;
+  --bg-soft: #141922;
+  --panel: #171d27;
+  --line: #232b38;
+  --line-soft: #1c2330;
+  --ink: #dbe2ec;
+  --ink-dim: #97a3b6;
+  --ink-faint: #6b7789;
+  --accent: #ffb454;
+  --accent-ink: #10141a;
+  --mint: #5fe3c0;
+  --pink: #ff7b9c;
+  --violet: #c792ea;
+  --blue: #82aaff;
+  --green: #b3e06a;
+  --radius: 12px;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 30px rgba(0,0,0,.28);
+}
+:root[data-theme="light"] {
+  --bg: #fbfaf8;
+  --bg-soft: #f3f1ec;
+  --panel: #ffffff;
+  --line: #e2ded6;
+  --line-soft: #ece8e0;
+  --ink: #1b2128;
+  --ink-dim: #57616f;
+  --ink-faint: #8a94a3;
+  --accent: #b26a00;
+  --accent-ink: #fffaf2;
+  --mint: #067e63;
+  --pink: #c03060;
+  --violet: #7b46b8;
+  --blue: #2d5fd0;
+  --green: #4d7c14;
+  --shadow: 0 1px 2px rgba(30,25,15,.06), 0 8px 24px rgba(30,25,15,.07);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #fbfaf8;
+    --bg-soft: #f3f1ec;
+    --panel: #ffffff;
+    --line: #e2ded6;
+    --line-soft: #ece8e0;
+    --ink: #1b2128;
+    --ink-dim: #57616f;
+    --ink-faint: #8a94a3;
+    --accent: #b26a00;
+    --accent-ink: #fffaf2;
+    --mint: #067e63;
+    --pink: #c03060;
+    --violet: #7b46b8;
+    --blue: #2d5fd0;
+    --green: #4d7c14;
+    --shadow: 0 1px 2px rgba(30,25,15,.06), 0 8px 24px rgba(30,25,15,.07);
+  }
+}
+
+/* ---------------------------------------------------------------- base */
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.65 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+img { max-width: 100%; }
+a { color: var(--accent); text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent); text-underline-offset: 3px; }
+a:hover { text-decoration-color: currentColor; }
+
+/* ---------------------------------------------------------------- scrollbars */
+/* Thin, in the theme's own colours, and out of the way until you point at them.
+   Two syntaxes: the standard properties, which Firefox uses, and the WebKit
+   pseudo-elements. #toc ol hides its own on narrow screens and is more specific,
+   so it still wins. */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--ink-faint) 42%, transparent) transparent;
+}
+:is(html, body, .code pre, .term pre, .tw, #toc)::-webkit-scrollbar {
+  width: 10px; height: 10px;
+}
+:is(html, body, .code pre, .term pre, .tw, #toc)::-webkit-scrollbar-track {
+  background: transparent;
+}
+:is(html, body, .code pre, .term pre, .tw, #toc)::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ink-faint) 42%, transparent);
+  border: 3px solid transparent;      /* padding, so the thumb reads as ~4px */
+  background-clip: content-box;
+  border-radius: 8px;
+}
+:is(html, body, .code pre, .term pre, .tw, #toc)::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--accent) 70%, transparent);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-corner { background: transparent; }
+h1, h2, h3 { line-height: 1.2; letter-spacing: -.02em; margin: 0; }
+code, pre, kbd { font-family: var(--mono); }
+.skip {
+  position: absolute; left: -9999px; top: 0; z-index: 100;
+  background: var(--accent); color: var(--accent-ink); padding: 10px 16px; border-radius: 0 0 8px 0;
+}
+.skip:focus { left: 0; }
+
+/* ---------------------------------------------------------------- topbar */
+.topbar {
+  position: sticky; top: 0; z-index: 40;
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 20px;
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line-soft);
+}
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 650; letter-spacing: -.01em; text-decoration: none; color: var(--ink); }
+.glyph {
+  display: grid; place-items: center;
+  width: 26px; height: 26px; border-radius: 7px;
+  background: var(--accent); color: var(--accent-ink);
+  font: 700 14px/1 var(--mono);
+}
+.brand small { color: var(--ink-faint); font-weight: 500; font-size: 12px; letter-spacing: 0; }
+.topbar nav { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.topbar nav a, .ghost {
+  color: var(--ink-dim); text-decoration: none; font-size: 13.5px;
+  padding: 6px 10px; border-radius: 8px; border: 1px solid transparent;
+  background: none; cursor: pointer; font-family: inherit;
+}
+.topbar nav a:hover, .ghost:hover { color: var(--ink); background: var(--bg-soft); border-color: var(--line-soft); }
+.ghost { line-height: 1; }
+@media (max-width: 640px) { .hide-sm { display: none; } }
+
+/* ---------------------------------------------------------------- hero */
+.hero {
+  padding: 64px 20px 40px;
+  border-bottom: 1px solid var(--line-soft);
+  background:
+    radial-gradient(1200px 380px at 15% -10%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%),
+    radial-gradient(900px 340px at 85% 0%, color-mix(in srgb, var(--mint) 9%, transparent), transparent 70%);
+}
+.hero-in { max-width: 1080px; margin: 0 auto; display: grid; gap: 34px; grid-template-columns: 1.15fr 1fr; align-items: center; }
+@media (max-width: 900px) { .hero-in { grid-template-columns: 1fr; } .hero { padding-top: 44px; } }
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 8px;
+  font: 600 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 18px;
+}
+.eyebrow::before { content: ""; width: 20px; height: 1px; background: currentColor; }
+.hero h1 { font-size: clamp(34px, 6vw, 54px); font-weight: 700; }
+.hero h1 em { font-style: normal; color: var(--accent); }
+.lede { color: var(--ink-dim); font-size: clamp(16px, 2.2vw, 18.5px); margin: 16px 0 24px; max-width: 46ch; }
+.cta { display: flex; flex-wrap: wrap; gap: 10px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 16px; border-radius: 10px; text-decoration: none;
+  font-size: 14.5px; font-weight: 550; border: 1px solid var(--line);
+  background: var(--panel); color: var(--ink);
+}
+.btn:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.btn.primary:hover { filter: brightness(1.07); }
+.stats { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; }
+.stat {
+  border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px;
+  font: 500 12.5px/1.5 var(--mono); color: var(--ink-dim); background: var(--panel);
+}
+.stat b { color: var(--ink); font-weight: 650; }
+
+/* ---------------------------------------------------------------- terminal */
+.term {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: var(--shadow); overflow: hidden;
+}
+.term-bar { display: flex; align-items: center; gap: 6px; padding: 9px 12px; border-bottom: 1px solid var(--line-soft); background: var(--bg-soft); }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+.term-bar span { margin-left: 6px; font: 500 11.5px/1 var(--mono); color: var(--ink-faint); }
+.term pre { margin: 0; padding: 16px 18px; font-size: 12.8px; line-height: 1.75; overflow-x: auto; }
+.term .p { color: var(--mint); }
+.term .o { color: var(--ink-dim); }
+
+/* ---------------------------------------------------------------- shell */
+.shell { max-width: 1080px; margin: 0 auto; display: grid; grid-template-columns: 208px minmax(0, 1fr); gap: 44px; padding: 0 20px 80px; }
+@media (max-width: 900px) { .shell { grid-template-columns: minmax(0, 1fr); gap: 0; } }
+
+#toc { position: sticky; top: 57px; align-self: start; max-height: calc(100vh - 70px); overflow-y: auto; padding: 30px 0; }
+#toc ol { list-style: none; margin: 0; padding: 0; counter-reset: s; }
+#toc a {
+  display: block; padding: 5px 10px; border-radius: 7px; text-decoration: none;
+  color: var(--ink-faint); font-size: 13.5px; border-left: 2px solid transparent;
+}
+#toc a::before { counter-increment: s; content: counter(s, decimal-leading-zero) "  "; font-family: var(--mono); font-size: 11px; opacity: .55; }
+#toc a:hover { color: var(--ink); }
+#toc a.on { color: var(--accent); border-left-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+@media (max-width: 900px) {
+  #toc {
+    position: sticky; top: 56px; z-index: 30; max-height: none; padding: 10px 0;
+    background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line-soft); margin: 0 -20px; padding-inline: 12px;
+  }
+  #toc ol { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+  #toc ol::-webkit-scrollbar { display: none; }
+  #toc a { white-space: nowrap; border-left: none; border-bottom: 2px solid transparent; border-radius: 7px 7px 0 0; }
+  #toc a.on { border-left: none; border-bottom-color: var(--accent); }
+}
+
+/* ---------------------------------------------------------------- sections */
+main { padding-top: 30px; min-width: 0; }
+section { padding: 34px 0; border-bottom: 1px solid var(--line-soft); scroll-margin-top: 120px; }
+section:last-of-type { border-bottom: none; }
+section > h2 { font-size: clamp(23px, 3.4vw, 28px); display: flex; align-items: baseline; gap: 12px; }
+section > h2 .num { font: 600 12px/1 var(--mono); color: var(--accent); letter-spacing: .1em; }
+section p { color: var(--ink-dim); }
+section p strong, li strong { color: var(--ink); font-weight: 600; }
+h3 { font-size: 16.5px; margin: 30px 0 -4px; letter-spacing: -.01em; }
+ul { color: var(--ink-dim); padding-left: 20px; }
+li { margin: 6px 0; }
+p code, li code, td code, h3 code {
+  background: var(--bg-soft); border: 1px solid var(--line-soft);
+  padding: 1px 5px; border-radius: 5px; font-size: .87em; color: var(--ink);
+}
+/* A code block inside a list item is still a block: undo the inline style above. */
+.code pre code { background: none; border: 0; padding: 0; border-radius: 0; font-size: inherit; color: inherit; }
+.reveal { opacity: 0; transform: translateY(10px); transition: opacity .5s ease, transform .5s ease; }
+.reveal.in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
+
+/* ---------------------------------------------------------------- code */
+.code { position: relative; margin: 18px 0; }
+.code pre {
+  margin: 0; padding: 15px 17px; overflow-x: auto;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  font-size: 13.1px; line-height: 1.7; tab-size: 4;
+}
+.code.titled pre { border-top-left-radius: 0; border-top-right-radius: 0; }
+.code-title {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; font: 500 11.5px/1 var(--mono); color: var(--ink-faint);
+  background: var(--bg-soft); border: 1px solid var(--line); border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0; letter-spacing: .04em;
+}
+.copy {
+  position: absolute; top: 8px; right: 8px; z-index: 2;
+  border: 1px solid var(--line); background: var(--bg-soft); color: var(--ink-dim);
+  border-radius: 7px; padding: 4px 9px; font: 500 11.5px/1.4 var(--mono); cursor: pointer;
+  opacity: 0; transition: opacity .16s ease;
+}
+.code:hover .copy, .copy:focus-visible { opacity: 1; }
+.copy:hover { color: var(--ink); border-color: var(--accent); }
+.copy.done { color: var(--mint); border-color: var(--mint); opacity: 1; }
+@media (hover: none) { .copy { opacity: 1; } }
+.c { color: var(--ink-faint); font-style: italic; }
+.s { color: var(--green); }
+.n { color: var(--accent); }
+.k { color: var(--pink); }
+.t { color: var(--mint); }
+.b { color: var(--violet); }
+.f { color: var(--blue); }
+
+/* ---------------------------------------------------------------- tables */
+.tw { overflow-x: auto; margin: 18px 0; border: 1px solid var(--line); border-radius: var(--radius); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+th { font: 600 11.5px/1.4 var(--mono); text-transform: uppercase; letter-spacing: .07em; color: var(--ink-faint); background: var(--bg-soft); }
+tr:last-child td { border-bottom: none; }
+td { color: var(--ink-dim); }
+td:first-child { color: var(--ink); white-space: nowrap; }
+td.mono, th.mono { font-family: var(--mono); font-size: 13px; }
+
+/* ---------------------------------------------------------------- notes */
+.note {
+  margin: 18px 0; padding: 13px 16px; border-radius: 10px;
+  background: var(--bg-soft); border: 1px solid var(--line-soft);
+  border-left: 3px solid var(--ink-faint); font-size: 14.5px; color: var(--ink-dim);
+}
+.note b { color: var(--ink); }
+.note.warn { border-left-color: var(--accent); }
+.note.tip { border-left-color: var(--mint); }
+.note.bad { border-left-color: var(--pink); }
+.note :is(p):first-child { margin-top: 0; }
+.note :is(p):last-child { margin-bottom: 0; }
+
+/* ---------------------------------------------------------------- memory map */
+.map { display: grid; gap: 3px; margin: 20px 0; font-family: var(--mono); font-size: 12.5px; }
+.map .row { display: grid; grid-template-columns: 62px minmax(0,1fr); gap: 12px; align-items: center; }
+.map .addr { color: var(--ink-faint); text-align: right; }
+.map .band {
+  padding: 10px 14px; border-radius: 8px; color: var(--ink);
+  border: 1px solid var(--line); background: var(--panel);
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+}
+.map .band small { color: var(--ink-faint); }
+.map .band.image { background: color-mix(in srgb, var(--blue) 14%, var(--panel)); border-color: color-mix(in srgb, var(--blue) 34%, var(--line)); }
+.map .band.heap { background: color-mix(in srgb, var(--mint) 13%, var(--panel)); border-color: color-mix(in srgb, var(--mint) 32%, var(--line)); }
+.map .band.free { background: repeating-linear-gradient(135deg, transparent, transparent 6px, var(--line-soft) 6px, var(--line-soft) 12px); }
+.map .band.stack { background: color-mix(in srgb, var(--pink) 13%, var(--panel)); border-color: color-mix(in srgb, var(--pink) 32%, var(--line)); }
+.map .band.disp { background: color-mix(in srgb, var(--accent) 14%, var(--panel)); border-color: color-mix(in srgb, var(--accent) 34%, var(--line)); }
+
+/* ---------------------------------------------------------------- palette toy */
+.toy {
+  margin: 20px 0; padding: 18px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--panel); display: grid; grid-template-columns: 132px minmax(0,1fr); gap: 20px; align-items: center;
+}
+@media (max-width: 560px) { .toy { grid-template-columns: 1fr; } }
+#swatch { width: 100%; aspect-ratio: 1; max-width: 132px; border-radius: 10px; border: 1px solid var(--line); background: #fff; }
+.toy label { display: grid; grid-template-columns: 26px 1fr 30px; align-items: center; gap: 12px; font: 600 12px/1 var(--mono); color: var(--ink-dim); margin-bottom: 12px; }
+.toy label b { color: var(--ink); text-align: right; font-weight: 600; }
+.toy input[type=range] { width: 100%; accent-color: var(--accent); }
+.toy .out { font: 500 13px/1.6 var(--mono); color: var(--ink-dim); border-top: 1px solid var(--line-soft); padding-top: 12px; }
+.toy .out b { color: var(--accent); }
+
+/* ---------------------------------------------------------------- footer */
+footer { border-top: 1px solid var(--line-soft); padding: 34px 20px 60px; background: var(--bg-soft); }
+.foot-in { max-width: 1080px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: center; color: var(--ink-faint); font-size: 13.5px; }
+.foot-in a { color: var(--ink-dim); }
+</style>
+</head>
+<body>
+<a class="skip" href="#start">Skip to content</a>
+
+<header class="topbar">
+  <a class="brand" href="#top"><span class="glyph">M</span> Mona <small class="hide-sm">crash course</small></a>
+  <nav>
+    <a href="https://github.com/mrggvg/monac/blob/main/docs/reference/language.md">Full spec</a>
+    <a class="hide-sm" href="https://github.com/mrggvg/monac/tree/main/examples">Examples</a>
+    <a href="https://github.com/mrggvg/monac">GitHub</a>
+    <button class="ghost" id="theme" type="button" aria-label="Switch theme">◐</button>
+  </nav>
+</header>
+
+<div class="hero" id="top">
+  <div class="hero-in">
+    <div>
+      <div class="eyebrow">For the 16-bit Assembly Simulator</div>
+      <h1>A C-like language for a machine that <em>fits in your head</em>.</h1>
+      <p class="lede">Mona compiles to the 16-bit Assembly Simulator from the Sistemi I course at UP FAMNIT: four
+        registers, 4 KB of RAM, one clock tick per instruction, and nothing underneath you. This page is the whole
+        language, and how to build, run and debug what you write in it.</p>
+      <div class="cta">
+        <a class="btn primary" href="#start">Start here →</a>
+        <a class="btn" href="https://github.com/mrggvg/monac">Get the compiler</a>
+      </div>
+      <div class="stats">
+        <span class="stat"><b>4,096</b> bytes, total</span>
+        <span class="stat"><b>4</b> registers</span>
+        <span class="stat"><b>1</b> tick / instruction</span>
+        <span class="stat"><b>0</b> floats</span>
+      </div>
+    </div>
+    <div class="term">
+      <div class="term-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span>snake.mona</span></div>
+      <pre><span class="p">$</span> monac snake.mona -O1 --stats -o snake.asm
+<span class="o">monac: 947 instructions, 3104 bytes of 4096
+monac: stack at most 32 bytes, 992 bytes free</span>
+
+<span class="p">$</span> monac cube.mona -O1 --stats -o cube.asm
+<span class="o">monac: 454 instructions, 1480 bytes of 4096
+monac: stack at most 18 bytes, 2616 bytes free</span></pre>
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+<nav id="toc" aria-label="Contents">
+  <ol>
+    <li><a href="#start">Getting started</a></li>
+    <li><a href="#hello">Hello, machine</a></li>
+    <li><a href="#types">Types</a></li>
+    <li><a href="#declarations">Declarations</a></li>
+    <li><a href="#expressions">Expressions</a></li>
+    <li><a href="#control">Control flow</a></li>
+    <li><a href="#functions">Functions</a></li>
+    <li><a href="#aggregates">Structs &amp; pointers</a></li>
+    <li><a href="#hardware">Hardware</a></li>
+    <li><a href="#graphics">Graphics card</a></li>
+    <li><a href="#cookbook">Graphics cookbook</a></li>
+    <li><a href="#heap">The heap</a></li>
+    <li><a href="#interrupts">Interrupts</a></li>
+    <li><a href="#memory">Memory map</a></li>
+    <li><a href="#traps">Things that bite</a></li>
+    <li><a href="#cli">Using monac</a></li>
+    <li><a href="#messages">Messages</a></li>
+    <li><a href="#debugging">Debugging</a></li>
+    <li><a href="#fast">Writing fast Mona</a></li>
+    <li><a href="#examples">The examples</a></li>
+    <li><a href="#ideas">Ideas to build</a></li>
+    <li><a href="#missing">Not here</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<div class="note tip" id="which-simulator">
+  <p><b>Is this the right simulator?</b> Mona targets the <b>16-bit Assembly Simulator</b> used in
+    <b>Sistemi I</b> (Systems I) at <b>UP FAMNIT</b>, the University of Primorska in Koper — the one served
+    from Moodle at <code>e.famnit.upr.si</code>. You are in the right place if your machine has registers
+    <code>A</code>, <code>B</code>, <code>C</code> and <code>D</code>, 4 KB of RAM, a text display at
+    <code>0x1000</code>, a graphics card on the I/O ports, and no <code>MOD</code> instruction.</p>
+  <p><i>Slovensko:</i> Mona je programski jezik, podoben C-ju. Prevajalnik <code>monac</code> jo prevede v
+    zbirnik (asembler) za 16-bitni simulator, ki ga uporabljamo pri predmetu Sistemi I na UP FAMNIT.</p>
+  <p>This is an independent student project — not affiliated with, nor endorsed by, the course or the faculty.</p>
+</div>
+
+<section id="start" class="reveal">
+  <h2><span class="num">01</span> Getting started</h2>
+  <p>Mona is written in a text editor and compiled on your own machine; what comes out is ordinary assembly
+    for the 16-bit Assembly Simulator, which you paste in and run. There is nothing to install on the
+    simulator's side.</p>
+
+  <h3>What you need</h3>
+  <div class="tw"><table>
+    <tr><th>tool</th><th>why</th></tr>
+    <tr><td>A JDK, version 21 or newer</td><td>the compiler is a Java program. It must be a JDK, not just a JRE:
+      <code>javac -version</code> should answer.</td></tr>
+    <tr><td>Maven 3.9 or newer</td><td>to build the compiler from source, once.</td></tr>
+    <tr><td>The simulator</td><td>open it in a browser, as in the course.</td></tr>
+    <tr><td>Node.js <small>(optional)</small></td><td>only for running the compiler's own end-to-end tests.</td></tr>
+  </table></div>
+
+  <h3>Build the compiler, once</h3>
+  <div class="code" data-title="terminal"><pre><code>git clone https://github.com/mrggvg/monac.git
+cd monac
+mvn package                     # builds target/monac.jar
+java -jar target/monac.jar --help</code></pre></div>
+  <p>Typing <code>java -jar …/monac.jar</code> gets old quickly, so give it a name. Everything else on this page
+    writes plain <code>monac</code>.</p>
+  <div class="code" data-title="bash or zsh — add to ~/.bashrc or ~/.zshrc"><pre><code>alias monac='java -jar ~/monac/target/monac.jar'</code></pre></div>
+  <div class="code" data-title="Windows PowerShell — add to your $PROFILE"><pre><code>function monac { java -jar $HOME\monac\target\monac.jar @args }</code></pre></div>
+  <div class="note warn"><b><code>error: release version 21 not supported</code>?</b> Maven is running on a Java
+    without a compiler in it. The build tries to find a <code>javac</code> on the PATH by itself; if there is
+    none, point <code>JAVA_HOME</code> at a real JDK and run <code>mvn package</code> again.
+    <a href="https://github.com/mrggvg/monac/blob/main/docs/building.md">building.md</a> has the details.</div>
+
+  <h3>Your first program, start to finish</h3>
+  <ol>
+    <li><strong>Write it.</strong> Save this as <code>hello.mona</code>:
+      <div class="code" data-title="hello.mona"><pre><code class="mona">byte* const SCREEN = 4096;       // the text display, 32 characters at 0x1000
+
+word main() {
+    const byte* text = "HELLO, MONA";
+    word i = 0;
+    while (text[i] != 0) {
+        SCREEN[i] = text[i];
+        i++;
+    }
+    return i;                        // 11, left in register A
+}</code></pre></div></li>
+    <li><strong>Compile it.</strong> <code>monac hello.mona</code> writes <code>hello.asm</code> next to it. Add
+      <code>--stats</code> to see what it costs:
+      <div class="code" data-title="terminal"><pre><code>$ monac hello.mona --stats
+monac: 30 instructions, 102 bytes of 4096
+monac: stack at most 4 bytes, 3994 bytes free</code></pre></div></li>
+    <li><strong>Load it.</strong> Open <code>hello.asm</code>, copy all of it, paste it into the simulator's
+      editor, and press <strong>Assemble</strong>.</li>
+    <li><strong>Run it.</strong> Pick a speed first — the default of 4 Hz is for stepping through code one
+      instruction at a time, and a program of any size wants 10 kHz or more — then press
+      <strong>Run</strong>. When <code>main</code> returns the machine halts, <code>A</code> holds 11, and the
+      text display reads <code>HELLO, MONA</code>.</li>
+  </ol>
+  <p>That is the whole loop: edit, compile, paste, assemble, run. When something surprises you, the flags in the
+    next section show every stage in between.</p>
+</section>
+
+<section id="hello" class="reveal">
+  <h2><span class="num">02</span> Hello, machine</h2>
+  <p>Every program is one file with a <code>main</code>. There is no <code>#include</code>, no linker and no
+    library — one file becomes one image, and that image holds the code, the data, the heap and the stack
+    inside 4 KB. Whatever <code>main</code> returns is left in register <code>A</code> when the machine halts.</p>
+  <div class="code" data-title="gcd.mona"><pre><code class="mona">// Euclid, in the language's whole vocabulary: a loop, a modulo, two locals.
+word gcd(word a, word b) {
+    while (b != 0) {
+        word t = b;
+        b = a % b;
+        a = t;
+    }
+    return a;
+}
+
+word main() {
+    return gcd(1071, 462);      // 21
+}</code></pre></div>
+  <div class="code"><pre><code class="mona">monac gcd.mona -o gcd.asm       // then paste gcd.asm into the simulator</code></pre></div>
+  <h3>Flags worth knowing</h3>
+  <div class="tw"><table>
+    <tr><th class="mono">flag</th><th>what it does</th></tr>
+    <tr><td class="mono">-o &lt;file&gt;</td><td>where the assembly goes; <code>-</code> for stdout</td></tr>
+    <tr><td class="mono">-O0 -O1 -O2</td><td>optimization level, <code>-O1</code> by default</td></tr>
+    <tr><td class="mono">--stats</td><td>instruction count, image size, stack high-water mark, free space</td></tr>
+    <tr><td class="mono">-Wall -Werror</td><td>more warnings; warnings as errors</td></tr>
+    <tr><td class="mono">--dump-ast --dump-ir --dump-asm</td><td>each stage, for when the output surprises you</td></tr>
+  </table></div>
+  <p>Every option, what <code>--stats</code> reports, and what to do with an error message are further down, in
+    <a href="#cli">Using monac</a> and <a href="#messages">Reading the compiler's messages</a>.</p>
+  <div class="note tip"><b>Everything on this page is tested.</b> Each snippet is drawn from
+    <a href="https://github.com/mrggvg/monac/blob/main/docs/reference/language.md">language.md</a>, whose every claim is compiled
+    and executed by four programs in the test corpus at both <code>-O0</code> and <code>-O1</code>. Writing that
+    reference found three real compiler bugs, which is the argument for checking a language description instead of
+    composing one.</div>
+</section>
+
+<section id="types" class="reveal">
+  <h2><span class="num">03</span> Types</h2>
+  <p>Four numeric types, plus pointers, arrays and structs. That is the whole type system.</p>
+  <div class="tw"><table>
+    <tr><th class="mono">type</th><th>bits</th><th>range</th><th>notes</th></tr>
+    <tr><td class="mono">byte</td><td>8</td><td class="mono">0 … 255</td><td>unsigned</td></tr>
+    <tr><td class="mono">sbyte</td><td>8</td><td class="mono">−128 … 127</td><td>sign-extends when read</td></tr>
+    <tr><td class="mono">word</td><td>16</td><td class="mono">0 … 65535</td><td>the machine's natural size</td></tr>
+    <tr><td class="mono">sword</td><td>16</td><td class="mono">−32768 … 32767</td><td></td></tr>
+    <tr><td class="mono">void</td><td>—</td><td>—</td><td>a return type only; there are no <code>void</code> variables</td></tr>
+    <tr><td class="mono">T*</td><td>16</td><td>—</td><td>to any depth: <code>word**</code> is fine</td></tr>
+    <tr><td class="mono">T[n]</td><td>n · sizeof(T)</td><td>—</td><td><code>n</code> must be a constant expression</td></tr>
+    <tr><td class="mono">struct S</td><td>sum of members</td><td>—</td><td>packed — no padding at all</td></tr>
+  </table></div>
+  <h3>Writing numbers</h3>
+  <p>Every integer constant C has, meaning the same thing it means in C. A leading <code>0</code> is octal, so
+    <code>010</code> is eight and <code>09</code> is an error.</p>
+  <div class="tw"><table>
+    <tr><th class="mono">written</th><th class="mono">value</th><th>what it is</th></tr>
+    <tr><td class="mono">42</td><td class="mono">42</td><td>decimal</td></tr>
+    <tr><td class="mono">0x1F, 0X1f</td><td class="mono">31</td><td>hexadecimal</td></tr>
+    <tr><td class="mono">017</td><td class="mono">15</td><td>octal — a leading zero</td></tr>
+    <tr><td class="mono">0b1011, 0B1011</td><td class="mono">11</td><td>binary</td></tr>
+    <tr><td class="mono">1'000, 0b1010'1010</td><td class="mono">1000, 170</td><td>with C23 digit separators, which mean nothing</td></tr>
+    <tr><td class="mono">10u, 0xFFul, 7LLU</td><td class="mono">10, 255, 7</td><td>with C's suffixes, accepted and ignored: every integer here is 16 bits</td></tr>
+    <tr><td class="mono">'A', '\101', '\x41'</td><td class="mono">65</td><td>a character, an octal byte, a hexadecimal byte</td></tr>
+    <tr><td class="mono">"hi"</td><td class="mono">—</td><td>a <code>byte*</code> to a zero-terminated copy in the image</td></tr>
+  </table></div>
+  <p>The escapes are C's whole set: <code>\n</code>, <code>\t</code>, <code>\r</code>, <code>\b</code>,
+    <code>\a</code>, <code>\f</code>, <code>\v</code>, <code>\\</code>, <code>\'</code>, <code>\"</code>,
+    <code>\?</code>, an octal byte of one to three digits, and <code>\x</code> with any number of hexadecimal
+    digits. Anything above 255 is an error, and so is a literal above 65535.</p>
+
+  <h3>Arithmetic is always 16-bit</h3>
+  <p>A <code>byte</code> is a <em>storage</em> size. It widens to 16 bits to be computed with and truncates back
+    on assignment, and the compiler warns when the truncation loses something.</p>
+  <div class="code"><pre><code class="mona">byte b = 250;
+b += 10;            // 4: a compound assignment narrows, as in C, and says nothing
+byte c = 260;       // warns: 260 does not fit in a byte, and becomes 4
+word w = b + 100;   // but the addition itself is 16-bit: 104</code></pre></div>
+  <h3>Signedness lives in the type, not the bits</h3>
+  <p>The same sixteen bits mean different things depending on how you declared them — the type is what picks
+    the instruction, since the machine has no sign flag to consult.</p>
+  <div class="code"><pre><code class="mona">sword s = 0 - 7;
+s / 2               // -3: division truncates toward zero
+s % 2               // -1: the remainder takes the dividend's sign
+s >> 1              // -4: an arithmetic shift, so the sign survives
+s < 0               // true
+
+word u = 65529;     // the same sixteen bits as -7
+u < 0               // false: nothing unsigned is below zero
+u > 1000            // true</code></pre></div>
+  <p>Mixing the two families in one operator warns and treats the result as signed. Keep an expression to
+    one family.</p>
+  <h3>sizeof</h3>
+  <div class="code"><pre><code class="mona">sizeof(word)         // 2
+sizeof(byte)         // 1
+sizeof(word*)        // 2 -- every pointer is a word
+sizeof(struct Node)  // the sum of its members, packed
+sizeof(someArray)    // the whole array, not one element
+sizeof(*p)           // the size of what p points at (p is not evaluated)</code></pre></div>
+</section>
+
+<section id="declarations" class="reveal">
+  <h2><span class="num">04</span> Declarations</h2>
+  <p>A declaration is a statement, so it goes anywhere one does and is in scope to the end of its block.
+    The initializer is optional.</p>
+  <div class="code"><pre><code class="mona">word counter = 0;
+word* cursor;                   // no initializer: uninitialized
+byte flag = 1;
+struct Point origin;            // aggregates declare fine without one</code></pre></div>
+  <div class="note warn"><b>A local with no initializer holds whatever was in its frame slot.</b>
+    There is no zeroing pass — it would cost instructions on every call. A <em>global</em> with no initializer
+    is zero, and that is not a promise the compiler keeps but one the machine does: RAM arrives cleared, which
+    is also what the allocators rely on.</div>
+  <p>A global's initializer must fold to a constant, because there is nowhere to run code before
+    <code>main</code>:</p>
+  <div class="code"><pre><code class="mona">word size = 2 * 21;             // fine, folded to 42
+word half = size / 2;           // error: must be a constant expression</code></pre></div>
+  <p>Top-level items — functions, globals and structs — are in scope throughout the file whatever the order,
+    so nothing needs declaring ahead of its use. A C prototype is still accepted, and checked against the
+    definition.</p>
+  <h3><code>const</code>, <code>enum</code> and <code>static</code></h3>
+  <div class="code"><pre><code class="mona">const word COLUMNS = 16;        // read-only, and a constant: it can size an array
+byte row[COLUMNS];
+
+enum Direction { UP, RIGHT, DOWN, LEFT };   // words with names: 0 to 3
+
+word nextId() {
+    static word issued = 0;     // one copy, kept between calls
+    return ++issued;
+}
+
+word draw() {
+    const byte* name = "mona";  // the bytes are read-only; name itself may move
+    byte* const cursor = row;   // cursor may not move; *cursor may be written
+    enum Direction facing = RIGHT;
+    ...
+}</code></pre></div>
+  <p><code>const</code> goes wherever C allows it and changes no code: it is a promise the compiler checks, down to
+    writes through a pointer to const. A const scalar with a constant initializer is itself a constant, which C
+    allows only from C23's <code>constexpr</code>. Enumerators have no storage, so they size arrays and label
+    cases too. A <code>static</code> local is a global only its block can name, initialized once, in the image.</p>
+</section>
+
+<section id="expressions" class="reveal">
+  <h2><span class="num">05</span> Expressions</h2>
+  <p>C's operators at C's precedence, loosest first — including C's much-regretted placement of the
+    bitwise operators below the comparisons.</p>
+  <div class="tw"><table>
+    <tr><th>#</th><th class="mono">operators</th><th></th></tr>
+    <tr><td>1</td><td class="mono">,</td><td>left, then right; the value is the right</td></tr>
+    <tr><td>2</td><td class="mono">= += -= *= /= %= &amp;= |= ^= &lt;&lt;= &gt;&gt;=</td><td>right associative</td></tr>
+    <tr><td>3</td><td class="mono">?:</td><td>right associative; only the chosen arm runs</td></tr>
+    <tr><td>4</td><td class="mono">||</td><td>short-circuits</td></tr>
+    <tr><td>5</td><td class="mono">&amp;&amp;</td><td>short-circuits</td></tr>
+    <tr><td>6–8</td><td class="mono">| &nbsp; ^ &nbsp; &amp;</td><td>one level each, in that order</td></tr>
+    <tr><td>9</td><td class="mono">== !=</td><td></td></tr>
+    <tr><td>10</td><td class="mono">&lt; &lt;= &gt; &gt;=</td><td></td></tr>
+    <tr><td>11</td><td class="mono">&lt;&lt; &gt;&gt;</td><td></td></tr>
+    <tr><td>12</td><td class="mono">+ -</td><td></td></tr>
+    <tr><td>13</td><td class="mono">* / %</td><td></td></tr>
+    <tr><td>14</td><td class="mono">unary - + ! ~ &amp; * ++ -- &nbsp; (type) &nbsp; sizeof</td><td>right associative</td></tr>
+    <tr><td>15</td><td class="mono">a[i] &nbsp; f(…) &nbsp; s.f &nbsp; p-&gt;f &nbsp; x++ &nbsp; x--</td><td></td></tr>
+  </table></div>
+  <div class="code"><pre><code class="mona">4 + 5 & 7           // 1, because + binds tighter than &
+1 + 2 << 3          // 24, because + binds tighter than <<
+!0                  // exactly 1; ! never yields anything else
+0 && boom()         // boom() is not called: && short-circuits</code></pre></div>
+  <p>All eleven compound assignments work, and so does the rest of C's expression syntax. Postfix
+    <code>++</code> yields the old value and prefix the new, and a pointer steps by the size of what it points
+    at. A cast narrows or reinterprets. <code>?:</code> evaluates only the arm it picks, and the comma operator
+    binds loosest of all.</p>
+  <div class="code"><pre><code class="mona">k++                     // the old value; k is one higher afterwards
+p++                     // a word* moves two bytes, a struct pointer its size
+(byte)300               // 44: the end of & 255 as the low-byte idiom
+(sword)65535            // -1: the same bits, read as signed
+p != 0 ? p->x : 0       // never dereferences a null p
+n < 5 ? 1 : n < 10 ? 2 : 3
+for (i = 0, j = 9; i < j; i++, j--) { }
+a = 1, 2                // assigns 1: the comma binds loosest</code></pre></div>
+</section>
+
+<section id="control" class="reveal">
+  <h2><span class="num">06</span> Control flow</h2>
+  <div class="code"><pre><code class="mona">if (a < b) {
+    ...
+} else if (a < c) {             // just an else whose statement is another if
+    ...
+} else {
+    ...
+}
+
+while (count < 3) count += 1;   // braces optional around one statement
+while (1) { ... }               // the endless-loop idiom
+
+for (word i = 0; i < 5; i += 1) { ... }
+for (; i < 5; i += 1) { }       // any of the three parts may be empty
+for (word i = 0; ; i += 1) { }  // an empty condition means true
+
+break;                          // leaves the nearest loop or switch
+continue;                       // next iteration of the nearest loop
+
+do {
+    m = m * 2;
+} while (m < 100);              // the body runs before the first test</code></pre></div>
+  <p>A <code>switch</code> falls through exactly as C's does,
+    which is a feature here rather than an accident — the arms hold statements, not blocks.</p>
+  <div class="code"><pre><code class="mona">switch (n) {
+    case 1: hits += 1;          // no break, so it falls into case 2
+    case 2: hits += 10;
+            break;
+    case 3:
+    case 4: hits += 100;        // several labels, one arm
+            break;
+    default: hits = 0;          // optional; a switch matching nothing does nothing
+}</code></pre></div>
+  <p>Case labels must fold to a constant — a character literal is one. The switched value need not.</p>
+  <div class="code"><pre><code class="mona">for (word i = 0; i < 10; i++) {
+    for (word j = 0; j < 10; j++) {
+        if (grid[i][j] == target) goto found;   // out of both loops at once
+    }
+}
+return 0;
+found:
+return 1;</code></pre></div>
+  <p><code>goto</code> stays within its function, may leave blocks but not enter them, and may not jump
+    forward past a declaration.</p>
+</section>
+
+<section id="functions" class="reveal">
+  <h2><span class="num">07</span> Functions</h2>
+  <div class="code"><pre><code class="mona">word twice(word n) {
+    return n + n;
+}
+
+void store(word* into, word value) {
+    *into = value;
+    return;                     // optional in a void function
+}
+
+word main() {
+    return definedLater(6);     // order in the file does not matter
+}
+
+word definedLater(word n) {
+    return n * n;
+}</code></pre></div>
+  <p>A C prototype is accepted all the same, and checked: every declaration of a function must agree with
+    every other, before or after the definition. Parameter names are optional in one, <code>(void)</code> means
+    no parameters, and calling a prototype that is never defined is an error at the call — where C would have
+    waited for the linker.</p>
+  <div class="code"><pre><code class="mona">word isOdd(word);               // no parameter name needed
+void reset(void);
+
+word isEven(word n) { return n == 0 ? 1 : isOdd(n - 1); }
+word isOdd(word n)  { return n == 0 ? 0 : isEven(n - 1); }</code></pre></div>
+  <p>Recursion works, mutual recursion included. The compiler computes the stack requirement from the call
+    graph where it can; a cyclic call graph has no such number, so a recursive program instead gets a run-time
+    guard that prints <code>STACK OVERFLOW</code> on the text display and halts — rather than quietly growing
+    down into its own code.</p>
+  <div class="code"><pre><code class="mona">word factorial(word n) {
+    if (n <= 1) return 1;
+    return n * factorial(n - 1);
+}</code></pre></div>
+  <p>The first argument travels in a register and the rest on the stack, which matters only because it makes
+    a one-argument function meaningfully cheaper than a four-argument one.</p>
+  <h3>Function pointers</h3>
+  <div class="code"><pre><code class="mona">word (*op)(word, word) = add;               // a function's name is its address
+op = &amp;mul;                                  // and so is &amp;name
+op(6, 7)                                    // 42, through CALL [A]
+
+word (*ops[2])(word, word) = {add, mul};    // a table of them, in the image
+struct Button { word id; void (*press)(void); };
+__setisr(onKey);                            // what an interrupt handler always was</code></pre></div>
+  <p>A pointer takes only a function of its own signature, or 0. The compiler cannot know which function a
+    pointer holds, but it knows which it <em>could</em> — only one whose address was taken somewhere — so an
+    indirect call counts as reaching every such function. The stack bound stays a number, and a cycle through a
+    pointer is guarded like any other recursion.</p>
+</section>
+
+<section id="aggregates" class="reveal">
+  <h2><span class="num">08</span> Structs &amp; pointers</h2>
+  <p>Structs are declared at file scope, and <code>struct</code> is written at every use, as in C89. They are
+    <strong>packed</strong>: no padding anywhere, so a <code>byte</code> followed by a <code>word</code> puts
+    that word at an odd offset. The machine has no alignment requirement to satisfy.</p>
+  <div class="code"><pre><code class="mona">struct Point { word x; word y; };
+struct Point origin = {3, 4};           // a list, in member order
+struct Mixed { byte flag; word value; sword delta; };   // sizeof is 5, not 6
+
+struct Node {
+    word key;
+    struct Node* next;          // itself, through a pointer
+};
+
+struct A { word k; struct B* b; };      // and B is not even declared yet:
+struct B { word j; struct A* a; };      // the layout pass runs to a fixpoint</code></pre></div>
+  <p>A struct <strong>can</strong> be assigned — it copies every byte — but it cannot be passed to or returned
+    from a function by value. The compiler says so, and tells you to pass a pointer.</p>
+  <div class="code"><pre><code class="mona">struct Point a;
+struct Point b;
+b = a;                          // fine: a full copy, not an alias
+a.x = 9;                        // b.x is still what it was
+
+struct Point* p = &a;
+p->y = 4;                       // p->f is (*p).f</code></pre></div>
+  <h3>Arrays</h3>
+  <div class="code"><pre><code class="mona">word table[4];                  // at file scope: zeroes
+word primes[5] = {2, 3, 5, 7, 11};
+word counted[] = {10, 20, 30};  // three: the list counts it
+byte name[] = "mona";           // five bytes, terminator included
+const byte* names[] = {"red", "green", "blue"};
+word grid[3][4];                // three rows of four: grid[2][3]
+word identity[2][2] = {{1, 0}, {0, 1}};
+
+word total(word* values, word count) {      // an array parameter is a pointer
+    word sum = 0;
+    for (word i = 0; i < count; i += 1) sum += values[i];
+    return sum;
+}
+
+total(table, 4);                // the name decays to &table[0]</code></pre></div>
+  <p><code>a[i]</code> is exactly <code>*(a + i)</code>, so it works on any pointer — and there is
+    <strong>no bounds checking anywhere</strong>.</p>
+  <p>Anything a list leaves out is zero, and C's rules hold: nested braces for nested aggregates, or none at
+    all. A local's list may use run-time values; a global's must be numbers, or the addresses of strings,
+    globals and functions, because it becomes bytes in the image.</p>
+  <h3>Unions</h3>
+  <div class="code"><pre><code class="mona">union Word { word whole; byte halves[2]; };   // every member at offset 0
+
+union Word w;
+w.whole = 0xABCD;
+w.halves[0]                     // 0xAB: the machine is big-endian</code></pre></div>
+  <h3>The one place Mona differs from C</h3>
+  <div class="code"><pre><code class="mona">struct Point points[3];
+
+&points[0] + 1 == &points[1]    // true: adding moves whole elements
+&points[1] - &points[0]         // 4 -- BYTES, not 1 element</code></pre></div>
+  <div class="note bad"><b>Pointer subtraction yields bytes.</b> Every other pointer operation behaves the way
+    C taught you. This one does not, and it is worth reading twice before you rely on it.</div>
+  <h3>The pointer-to-the-link idiom</h3>
+  <p>Because <code>&amp;</code> works on a member reached through a pointer, a list insert needs no special
+    case for the head:</p>
+  <div class="code"><pre><code class="mona">struct Node** link = &head;
+while (*link != 0) {
+    link = &(*link)->next;      // the address of the field that has to change
+}
+*link = fresh;</code></pre></div>
+</section>
+
+<section id="hardware" class="reveal">
+  <h2><span class="num">09</span> Talking to the hardware</h2>
+  <p>The peripherals live in a <strong>port space separate from memory</strong>, unreachable by any pointer.
+    Two builtins are the only way in, and each compiles to a single instruction. They are spelled with leading
+    underscores — C's convention for names reserved to the implementation — so there is never a header to
+    include and never a clash with a name of yours.</p>
+  <p>There are twenty-five builtins in all: these two, the three interrupt ones, the heap pair, six machine
+    helpers — <code>__vwrite</code>, <code>__vread</code>, <code>__vfill</code>,
+    <code>__waitframe</code>, <code>__mulhi</code> and <code>__getkey</code> — nine for memory, strings and
+    math, and <code>__ticks</code>, <code>__halt</code> and <code>__random</code>, which are one instruction
+    each. Seventeen of them become calls into small runtime routines, <strong>emitted only when a program
+    actually uses one</strong>, so an unused builtin costs nothing at all.</p>
+  <h3><code>__ticks</code>, the only measurement the machine offers</h3>
+  <p><code>TMRCOUNTER</code> falls by one for every instruction the CPU executes, halted ones
+    included, and it can be read. That makes an <em>exact</em> instruction count available to a
+    program for the price of one <code>IN</code>.</p>
+  <div class="code"><pre><code class="mona">__out(3, 30000);                // TMRPRELOAD: the counter only runs once it is set
+word before = __ticks();
+work();
+word cost = before - __ticks(); // exactly how many instructions that took</code></pre></div>
+  <p>It <strong>counts down</strong>, so the earlier reading is the larger one — and it is the
+    timer's own counter, so it wraps at the preload rather than running freely.</p>
+  <h3><code>__getkey</code>, which drains the port for you</h3>
+  <p>Returns <code>(status &lt;&lt; 8) | key</code>, or 0 when nothing is waiting.</p>
+  <div class="code"><pre><code class="mona">word k = __getkey();
+if (k != 0) {
+    word status = k >> 8;
+    word key = k & 255;
+    if ((status & 1) != 0) press(key);       // 1 is a key going down
+}</code></pre></div>
+  <p><code>KBDSTATUS</code> is a bit field, not a flag, and reading <code>KBDDATA</code> is what
+    clears it — so the only correct shape is collect first, decide afterwards. This is the one
+    builtin that encodes a policy rather than exposing a primitive, and that is the point: it
+    makes the trap below unskippable.</p>
+  <div class="code"><pre><code class="mona">word value = __in(port);        // read a port
+__out(port, value);             // write a port</code></pre></div>
+  <div class="tw"><table>
+    <tr><th>port</th><th class="mono">name</th><th>what it is</th></tr>
+    <tr><td class="mono">0</td><td class="mono">IRQMASK</td><td>one bit per device: keypad&nbsp;1, timer&nbsp;2, graphics&nbsp;4</td></tr>
+    <tr><td class="mono">1</td><td class="mono">IRQSTATUS</td><td>which devices are asking</td></tr>
+    <tr><td class="mono">2</td><td class="mono">IRQEOI</td><td>write back what you handled</td></tr>
+    <tr><td class="mono">3</td><td class="mono">TMRPRELOAD</td><td>instructions between timer interrupts</td></tr>
+    <tr><td class="mono">4</td><td class="mono">TMRCOUNTER</td><td>how many are left</td></tr>
+    <tr><td class="mono">5</td><td class="mono">KBDSTATUS</td><td>a key is waiting</td></tr>
+    <tr><td class="mono">6</td><td class="mono">KBDDATA</td><td>the key; reading it lowers the request</td></tr>
+    <tr><td class="mono">7</td><td class="mono">VIDMODE</td><td>0 off, 1 text, 2 bitmap, 3 clear, 4 reset</td></tr>
+    <tr><td class="mono">8</td><td class="mono">VIDADDR</td><td>byte address in video memory: <code>y * 256 + x</code></td></tr>
+    <tr><td class="mono">9</td><td class="mono">VIDDATA</td><td>the palette index to store there</td></tr>
+    <tr><td class="mono">10</td><td class="mono">RNDGEN</td><td><em>read-only</em> — a fresh random word every read</td></tr>
+  </table></div>
+  <div class="note bad"><b>Writing a read-only port faults the CPU</b> — ports 1, 4, 5, 6 and
+    10 — and so does naming a port above 10. The exception has nowhere to go: there is no
+    vector for it, the CPU latches into fault mode, and everything after it throws. With a
+    literal port the compiler rejects it outright; a computed one is never judged.</div>
+  <div class="code" data-title="a white pixel, four instructions"><pre><code class="mona">__out(7, 2);                    // VIDMODE 2: bitmap, 256 x 256, one byte a pixel
+__out(7, 3);                    // VIDMODE 3: clear all 65,536 pixels in one instruction
+__out(8, y * 256 + x);          // VIDADDR: where
+__out(9, 255);                  // VIDDATA: what</code></pre></div>
+  <div class="note warn"><b>Write the port as a literal in anything hot.</b> <code>OUT</code> takes its port as
+    an immediate or from a register and nothing else, so a port held in a variable has to be loaded into one
+    first — and with every register busy the compiler frees one by pushing it. In <code>cube.mona</code>'s inner
+    loop that was three extra instructions per pixel.</div>
+  <h3>The palette is arithmetic</h3>
+  <p>It is a 3-3-2 RGB cube, so a colour is a formula rather than a lookup table:
+    <code>index = red * 32 + green * 4 + blue</code>, red and green 0–7, blue 0–3. The
+    channels are stepped by 36, 36 and 85, so pure red is (252, 0, 0) rather than
+    (255, 0, 0) — index 255 is the one entry special-cased to true white. Drag these:</p>
+  <div class="toy">
+    <div id="swatch" role="img" aria-label="the selected colour"></div>
+    <div>
+      <label>R <input type="range" id="pr" min="0" max="7" value="7" aria-label="red 0 to 7"> <b id="vr">7</b></label>
+      <label>G <input type="range" id="pg" min="0" max="7" value="5" aria-label="green 0 to 7"> <b id="vg">5</b></label>
+      <label>B <input type="range" id="pb" min="0" max="3" value="1" aria-label="blue 0 to 3"> <b id="vb">1</b></label>
+      <div class="out" id="pout"></div>
+    </div>
+  </div>
+  <h3><code>__mulhi</code>, for the half of a product <code>MUL</code> throws away</h3>
+  <p><code>MUL</code> is 16&nbsp;&times;&nbsp;16 into 16 and the top half is simply gone. That
+    is the machine's largest arithmetic hole, and the reason <code>cube.mona</code> works at a
+    fixed-point scale of 128 rather than 256.</p>
+  <div class="code"><pre><code class="mona">__mulhi(1000, 1000)             // 15, because 1000 * 1000 is 0x000F4240
+1000 * 1000                     // 16960, which is 0x4240 -- the half MUL keeps
+
+// fixed point at scale 256, both halves combined
+word product = (__mulhi(a, b) &lt;&lt; 8) | ((a * b) &gt;&gt; 8);</code></pre></div>
+  <p>Recovering it takes four byte-wide multiplies and the carries between them — about thirty
+    instructions, too many to inline and too fiddly to write twice. Two of those carries are
+    invisible in a small test, so it is checked against exact arithmetic over 1,344 pairs.</p>
+  <h3>Memory, strings and math</h3>
+  <p>C's library staples, and the arithmetic this machine makes hard. Each one is checked against Java on the
+    real simulator.</p>
+  <div class="code"><pre><code class="mona">__memset(line, ' ', 16);          // a byte fill
+__memcpy(&amp;line[1], &amp;line[0], 15); // overlap is safe, unlike C's
+__strcpy(name, "mona");
+__strlen(name)                    // 4
+__strcmp("abc", "abd")            // -1: a sword, so &lt; 0 means what it says
+__sqrt(99)                        // 9, rounded down
+__sin(64)                         // 256: 256 steps a turn, and 256 is 1.0
+__cos(128)                        // -256
+__fixmul(384, 512)                // 768: 1.5 * 2.0 at scale 256, signed
+__random()                        // RNDGEN, one IN 10</code></pre></div>
+  <p><code>__sin</code> and <code>__cos</code> share one 65-word quarter-wave table, emitted once for
+    either. <code>__fixmul</code> is <code>(a * b) &gt;&gt; 8</code> on the whole 32-bit product, signed,
+    which is what turning a point needs:</p>
+  <div class="code"><pre><code class="mona">sword rx = __fixmul(x, __cos(a)) - __fixmul(y, __sin(a));
+sword ry = __fixmul(x, __sin(a)) + __fixmul(y, __cos(a));</code></pre></div>
+
+  <h3>The text display is just memory</h3>
+  <p>Thirty-two characters live at <code>0x1000</code>, one byte each. No builtin, no driver — an ordinary
+    array of bytes.</p>
+  <div class="code"><pre><code class="mona">byte* screen = 4096;            // 0x1000
+screen[0] = 'M';</code></pre></div>
+</section>
+
+<section id="graphics" class="reveal">
+  <h2><span class="num">10</span> The graphics card</h2>
+  <p>The card has <strong>its own 64 KB</strong>, entirely separate from the machine's 4 KB and reachable
+    only through <code>VIDADDR</code> and <code>VIDDATA</code>. What that memory <em>means</em> depends on
+    the mode, and the two modes have almost nothing in common.</p>
+  <h3>Bitmap — <code>VIDMODE 2</code></h3>
+  <p>All 65,536 bytes are the screen: 256&nbsp;&times;&nbsp;256, one byte per pixel, each byte a palette
+    index. <code>VIDADDR</code> is <code>y * 256 + x</code>. No scrolling, no sprites, no memory to spare —
+    and the palette is ROM, so it cannot be changed.</p>
+  <h3>Tile — <code>VIDMODE 1</code></h3>
+  <p>The simulator calls this "text mode", which undersells it by a wide margin. It is a tile engine, and
+    the 64 KB is laid out like one:</p>
+  <div class="tw"><table>
+    <tr><th class="mono">range</th><th>size</th><th>what lives there</th></tr>
+    <tr><td class="mono">0x0000–0x7FFF</td><td>32 K</td><td>tile map — 128 &times; 128 cells, 2 bytes each: tile index, then colour index</td></tr>
+    <tr><td class="mono">0x8000–0x9FFF</td><td>8 K</td><td>256 tile definitions, 32 bytes each: 16 &times; 16 pixels, one bit per pixel</td></tr>
+    <tr><td class="mono">0xA000–0xA2FF</td><td>768 B</td><td>palette — 256 entries, 3 bytes of RGB each</td></tr>
+    <tr><td class="mono">0xA301</td><td>1 B</td><td>background colour index</td></tr>
+    <tr><td class="mono">0xA302–0xA303</td><td>2 B</td><td>HScroll, in pixels</td></tr>
+    <tr><td class="mono">0xA304–0xA305</td><td>2 B</td><td>VScroll, in pixels</td></tr>
+    <tr><td class="mono">0xA306–0xA325</td><td>32 B</td><td>eight sprites, 4 bytes each: tile, colour, x, y</td></tr>
+    <tr><td class="mono">0xA326–0xFFFF</td><td>23,754 B</td><td>free — the card never reads it</td></tr>
+  </table></div>
+  <h3>Scrolling</h3>
+  <p>The map is 128 tiles square, which is <strong>2048 &times; 2048 pixels</strong>, seen through a
+    256-pixel window. The scroll registers are in <em>pixels</em>, not tiles, and clamp at 1792 —
+    exactly 2048 − 256 — so the window slides to every corner of the map, one pixel at a time. The card
+    draws 17 &times; 17 tiles to cover the partial ones at the edges.</p>
+  <h3>Tiles are redefinable, and start as a character set</h3>
+  <p>All 256 definitions are loaded from ROM at reset with a font, which is why writing a letter's code
+    into the map prints that letter. They are ordinary memory: overwrite one and it is your shape from
+    then on. A definition is 32 bytes — 16 rows of 16 bits, MSB first. A set bit takes the cell's colour
+    index; a clear bit shows the background colour. Two colours per cell, out of 256.</p>
+  <div class="note warn"><b>Redefining tile 0 paints the entire map.</b> Every cell a program has not
+    written is <code>(tile 0, colour 0)</code>, so a solid tile 0 covers all 2048 &times; 2048 pixels in
+    palette entry 0 and the background colour stops showing anywhere.</div>
+  <h3>Sprites</h3>
+  <p>Eight of them, 16 &times; 16, drawn from the same tile definitions in a single colour, always over
+    the map. Their clear bits are <strong>transparent</strong> rather than background — which is the one
+    thing a tile cannot do. They live in <em>screen</em> space, so scrolling the map does not move them,
+    and <code>x</code> and <code>y</code> are single bytes, so a sprite near an edge is clipped rather
+    than wrapped. <strong>Tile index 0 means off</strong>, so zeroing that byte hides a sprite.</p>
+  <h3>A frame clock, for free</h3>
+  <p>Whenever the display is on, the card raises <strong>interrupt line 2</strong> — IRQMASK bit value
+    <code>4</code> — every 20&nbsp;ms. That is a genuine 50&nbsp;Hz wall-clock tick, and it is the only
+    one the machine has: <code>TMRPRELOAD</code> counts <em>instructions</em>, so its rate moves with the
+    simulator's speed setting while this does not.</p>
+  <div class="code" data-title="a scrolling map, a redefined tile and a sprite"><pre><code class="mona">void defineTile(word which, word row) {         // 32 bytes: sixteen 2-byte writes
+    word at = 32768 + which * 32;               // 0x8000 + 32 * which
+    word end = at + 32;
+    while (at &lt; end) {
+        __out(8, at);
+        __out(9, row);                          // in tile mode VIDDATA stores TWO bytes
+        at += 2;
+    }
+}
+
+void setCell(word x, word y, word tile, word colour) {
+    __out(8, (y * 128 + x) * 2);
+    __out(9, tile * 256 + colour);              // one cell, one write
+}
+
+word main() {
+    __out(7, 1);                                // tile mode
+    defineTile(1, 65535);                       // 0xFFFF: a solid block
+    setCell(0, 0, 1, 224);                      // draw it in red
+    __out(8, 41728); __out(9, 3);               // 0xA301: background = blue
+
+    __out(8, 41734); __out(9, 1 * 256 + 28);    // 0xA306: sprite 1 = tile 1, green
+    __out(8, 41736); __out(9, 100 * 256 + 50);  // 0xA308: at x=100, y=50
+
+    __out(8, 41730); __out(9, 8);               // 0xA302: scroll right 8 pixels
+    return 0;
+}</code></pre></div>
+  <h3>Moving blocks in and out: <code>__vwrite</code>, <code>__vread</code>, <code>__vfill</code></h3>
+  <p><strong>There is no DMA on this machine</strong> — ports 0 to 10 are all of it — so every
+    byte crosses through <code>VIDADDR</code>/<code>VIDDATA</code> one write at a time. That
+    loop is not the same in both modes, since a <code>VIDDATA</code> write moves two bytes in
+    tile mode and one in bitmap. These three read <code>VIDMODE</code> and branch, so a byte
+    count means a byte count either way.</p>
+  <div class="code"><pre><code class="mona">__vwrite(vaddr, from, count);   // RAM -> video memory, count bytes
+__vread (vaddr, into, count);   // video memory -> RAM
+__vfill (vaddr, value, count);  // a 16-bit pattern, count bytes</code></pre></div>
+  <p>RAM is big-endian and <code>VIDDATA</code> splits a word the same way round, so in tile
+    mode a word passes through untouched, no shuffling. An odd count ends on a lone byte that
+    cannot be written by itself, so the tail reads the pair back, replaces one half and writes
+    it again: <strong>the byte after the range is left as it was</strong>.</p>
+  <div class="tw"><table>
+    <tr><th></th><th>tile mode</th><th>bitmap mode</th></tr>
+    <tr><td class="mono">__vwrite</td><td>4.5 instructions / byte</td><td>10</td></tr>
+    <tr><td class="mono">__vread</td><td>4.5</td><td>9</td></tr>
+    <tr><td class="mono">__vfill</td><td>4.0</td><td>8</td></tr>
+    <tr><td>the same loop written in Mona</td><td>14</td><td>16</td></tr>
+  </table></div>
+  <p>Tile mode is cheaper per byte because one <code>VIDDATA</code> write moves two of them.
+    The gap against hand-written code is not cleverness — the helper keeps the address and the
+    pointer in <code>B</code> and <code>C</code> and ends on a precomputed limit, which a Mona
+    loop cannot do because it has locals to spill.</p>
+  <p><code>__vfill</code>'s pattern is a whole cell in tile mode — high byte the tile, low byte
+    the colour — and just a palette index in bitmap mode:</p>
+  <div class="code"><pre><code class="mona">__vfill(0, 0, 2048);            // clear the top-left of the tile map
+__vfill(0, 0x0503, 512);        // or fill it with tile 5 in colour 3</code></pre></div>
+
+  <h3>Build it in RAM, push it across, take the RAM back</h3>
+  <p>The card's memory is the one place a 4 KB machine has room to spare, and the flow is
+    always those three steps. <strong>The heap is the natural place to build it</strong>,
+    precisely because you want the space returned.</p>
+  <div class="code" data-title="a kilobyte of tile shapes, borrowed and given back"><pre><code class="mona">word main() {
+    __out(7, 1);                            // tile mode
+
+    // 32 definitions -- a whole kilobyte of shapes -- in a buffer that only has to
+    // exist for as long as it takes to push it across.
+    byte* shapes = __alloc(32 * 32);
+    if (shapes == 0) return 1;
+    for (word i = 0; i &lt; 32 * 32; i += 1) {
+        shapes[i] = generate(i);
+    }
+
+    __vwrite(32768, shapes, 32 * 32);       // 0x8000: into the card
+    __free(shapes);                         // and the kilobyte is yours again
+
+    // The shapes live in video memory from here. The program keeps none of them.
+    ...
+}</code></pre></div>
+  <p>A kilobyte is a quarter of everything this machine has, so handing it back is not a
+    nicety. The same shape of code loads a palette (<code>0xA000</code>, 768 bytes), a sprite
+    table (<code>0xA306</code>, 32 bytes) or a screenful of map — and in reverse, it turns the
+    23,754 free bytes above <code>0xA326</code> into swap space.</p>
+  <div class="note warn"><b>Push once during setup, not per frame.</b> Every byte still goes
+    through a port, so a kilobyte is a few thousand instructions. There is no transfer engine
+    to do it for you.</div>
+
+  <h3>Frame pacing: <code>__waitframe</code></h3>
+  <p>Blocks until the card's next refresh, fifty times a second, by <strong>polling</strong>
+    <code>IRQSTATUS</code> — so it needs no handler, no <code>__setisr</code> and no
+    <code>__sti</code>. Frame pacing is available to a program that wants nothing else to do
+    with interrupts.</p>
+  <div class="code"><pre><code class="mona">word main() {
+    __out(7, 1);
+    while (1) {
+        __waitframe();          // 20 ms of wall time, every time
+        // ... move something, draw it ...
+    }
+}</code></pre></div>
+  <p>If the display is off it returns immediately, since there would be no refresh to wait for
+    and the wait would never end.</p>
+
+  <h3>Reading video memory, and 23 KB of scratch</h3>
+  <p>Writing <code>VIDADDR</code> <strong>pre-loads <code>VIDDATA</code></strong> from that address, so
+    video memory can be read as well as written — two instructions a time.</p>
+  <div class="code"><pre><code class="mona">word peek(word at) {
+    __out(8, at);
+    return __in(9);                 // in tile mode a big-endian word; in bitmap, a byte
+}</code></pre></div>
+  <p>In tile mode the card never looks above <code>0xA326</code>, which leaves <strong>23,754 bytes</strong>
+    it will not touch — <em>five and a half times the machine's entire RAM</em>, usable as slow but real
+    storage.</p>
+  <h3>The differences that catch people</h3>
+  <ul>
+    <li>A <code>VIDDATA</code> write stores <strong>two</strong> bytes in tile mode (the high byte at
+      <code>VIDADDR</code>, the low at <code>VIDADDR&nbsp;+&nbsp;1</code>) and <strong>one</strong> in
+      bitmap mode. Two bytes is exactly one map cell, or half a sprite record.</li>
+    <li>The palette is programmable in tile mode only. Bitmap mode reads the ROM and ignores
+      <code>0xA000</code> entirely.</li>
+    <li><code>VIDMODE 3</code> clears all 64 KB in bitmap mode, but only the 32 KB map in tile mode —
+      definitions, palette, scroll and sprites all survive. <code>VIDMODE 4</code> resets everything and
+      reloads the tile ROM.</li>
+    <li><code>VIDADDR</code> does not auto-increment. Four instructions per pixel is the floor in bitmap
+      mode, and two writes per cell in tile mode.</li>
+  </ul>
+  <div class="note tip"><b>All of the above is a test, not a reading of the source.</b>
+    <a href="https://github.com/mrggvg/monac/blob/main/src/test/java/dev/madlador/e2e/TileModeIT.java">TileModeIT</a>
+    drives the real card from Mona and asserts on the pixels it renders — the scroll offset, the
+    redefined shapes, sprite transparency, the palette, and what survives a clear.</div>
+</section>
+
+<section id="cookbook" class="reveal">
+  <h2><span class="num">11</span> Graphics cookbook</h2>
+  <p>The previous section is what the card <em>is</em>; this one is how to use it. Each recipe is a whole program
+    — compiled and run on the simulator, with the video memory it leaves behind checked — so you can paste one in
+    and change it. They share one habit from <a href="#fast">Writing fast Mona</a>: ports and addresses are
+    <code>enum</code>s and <code>const</code>s, so every <code>__out</code> takes an immediate.</p>
+
+  <h3>The builtins for the card</h3>
+  <div class="tw"><table>
+    <tr><th class="mono">builtin</th><th>what it does</th></tr>
+    <tr><td class="mono">__out(port, value)</td><td>one port write: <code>VIDMODE</code> 7, <code>VIDADDR</code> 8,
+      <code>VIDDATA</code> 9. Set the address, then write the data — the address does not advance by itself</td></tr>
+    <tr><td class="mono">__in(9)</td><td>read video memory back: writing <code>VIDADDR</code> pre-loads it</td></tr>
+    <tr><td class="mono">__vwrite(vaddr, from, count)</td><td>copy <code>count</code> bytes of RAM into the card
+      — tile shapes, a palette, sprite records</td></tr>
+    <tr><td class="mono">__vread(vaddr, into, count)</td><td>the same, from the card into RAM</td></tr>
+    <tr><td class="mono">__vfill(vaddr, value, count)</td><td>fill <code>count</code> bytes: a palette index in
+      bitmap mode, a whole cell (tile, colour) in tile mode</td></tr>
+    <tr><td class="mono">__waitframe()</td><td>wait for the next refresh — 50 a second, in real time, whatever the
+      simulator's speed</td></tr>
+    <tr><td class="mono">__getkey()</td><td><code>(status &lt;&lt; 8) | key</code>, or 0 when nothing is waiting;
+      a status of 1 means a key went down</td></tr>
+  </table></div>
+  <div class="tw"><table>
+    <tr><th class="mono">address</th><th>tile mode (<code>VIDMODE 1</code>)</th></tr>
+    <tr><td class="mono">(row * 128 + col) * 2</td><td>a map cell: the tile, then the colour</td></tr>
+    <tr><td class="mono">0x8000 + 32 * n</td><td>the shape of tile <code>n</code>: 16 rows of 16 bits</td></tr>
+    <tr><td class="mono">0xA000 + 3 * n</td><td>palette entry <code>n</code>: red, green, blue</td></tr>
+    <tr><td class="mono">0xA300</td><td>write a word here and its low byte is the background colour</td></tr>
+    <tr><td class="mono">0xA302, 0xA304</td><td>horizontal and vertical scroll, in pixels, up to 1792</td></tr>
+    <tr><td class="mono">0xA306 + 4 * n</td><td>sprite <code>n</code> of 8: tile, colour, x, y</td></tr>
+  </table></div>
+  <p>In bitmap mode (<code>VIDMODE 2</code>) the whole 64 KB is the screen: the pixel at (x, y) is at
+    <code>y * 256 + x</code>, and <code>VIDMODE 3</code> clears it.</p>
+
+  <h3>Pixels, colours and a filled box</h3>
+  <p>The bitmap palette is a fixed 3-3-2 colour cube, so a colour is arithmetic. A rectangle is one
+    <code>__vfill</code> per row, which is far cheaper than plotting it pixel by pixel.</p>
+  <div class="code" data-title="pixels.mona"><pre><code class="mona">enum Port { VIDMODE = 7, VIDADDR = 8, VIDDATA = 9 };
+enum Mode { MODE_TILE = 1, MODE_BITMAP = 2, MODE_CLEAR = 3 };
+
+// The palette is a 3-3-2 cube: red and green 0..7, blue 0..3.
+word rgb(word r, word g, word b) {
+    return r * 32 + g * 4 + b;
+}
+
+void plot(word x, word y, word colour) {
+    __out(VIDADDR, y * 256 + x);
+    __out(VIDDATA, colour);
+}
+
+// One __vfill a row: in bitmap mode every byte takes the pattern's low half.
+void rect(word x, word y, word w, word h, word colour) {
+    for (word row = y; row &lt; y + h; row++) {
+        __vfill(row * 256 + x, colour, w);
+    }
+}
+
+word main() {
+    __out(VIDMODE, MODE_BITMAP);
+    __out(VIDMODE, MODE_CLEAR);
+    rect(40, 40, 64, 32, rgb(7, 4, 0));     // an orange box
+    plot(128, 128, rgb(7, 7, 3));           // one white pixel
+    return 0;
+}</code></pre></div>
+
+  <h3>Text, a tile of your own, and the palette</h3>
+  <p>In tile mode every cell shows one of 256 shapes, and the ROM starts them as a character set — so writing a
+    letter's code into a cell prints it. Any shape can be replaced with <code>__vwrite</code>, and so can any
+    palette entry. Build the data as <code>const</code> arrays: they sit in the image, and nothing runs to make
+    them.</p>
+  <div class="code" data-title="tiles.mona"><pre><code class="mona">enum Port { VIDMODE = 7, VIDADDR = 8, VIDDATA = 9 };
+enum { MODE_TILE = 1, HEART = 1, PINK = 200 };
+
+const word TILES   = 0x8000;    // 256 definitions, 32 bytes each
+const word PALETTE = 0xA000;    // 256 entries, 3 bytes each: red, green, blue
+
+// Sixteen rows of sixteen pixels, two bytes a row, leftmost pixel in the top bit.
+const byte heart[32] = {
+    0x00, 0x00, 0x1C, 0x38, 0x3E, 0x7C, 0x7F, 0xFE, 0x7F, 0xFE, 0x7F, 0xFE, 0x3F, 0xFC, 0x1F, 0xF8,
+    0x0F, 0xF0, 0x07, 0xE0, 0x03, 0xC0, 0x01, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+};
+const byte pink[3] = {255, 105, 180};
+
+// A cell is two bytes: the tile, then the colour. Row 0, column 0 is at 0.
+void putText(word column, word row, const byte* text, word colour) {
+    word at = (row * 128 + column) * 2;
+    while (*text != 0) {
+        __out(VIDADDR, at);
+        __out(VIDDATA, *text++ * 256 + colour);
+        at += 2;
+    }
+}
+
+word main() {
+    __out(VIDMODE, MODE_TILE);
+    __vwrite(TILES + HEART * 32, heart, 32);        // tile 1 is a heart from now on
+    __vwrite(PALETTE + PINK * 3, pink, 3);          // colour 200 is pink
+
+    __out(VIDADDR, 0xA300);                         // the background colour is the
+    __out(VIDDATA, 3);                              // low byte of this pair: blue
+
+    putText(1, 1, "I LOVE MONA", 15);
+    __out(VIDADDR, (1 * 128 + 13) * 2);
+    __out(VIDDATA, HEART * 256 + PINK);             // and a heart after it
+    return 0;
+}</code></pre></div>
+
+  <h3>A sprite that moves over a map that scrolls</h3>
+  <p>A sprite is a four-byte record, and a <code>struct</code> with those four bytes in that order is exactly its
+    layout — Mona adds no padding — so it can be sent across whole. <code>__waitframe</code> paces the loop in real
+    time, and <code>__getkey</code> reads the keypad without any interrupt handler.</p>
+  <div class="code" data-title="sprite.mona"><pre><code class="mona">enum Port { VIDMODE = 7, VIDADDR = 8, VIDDATA = 9 };
+enum { MODE_TILE = 1, KEY_DOWN = 1 };
+
+const word SPRITES = 0xA306;    // eight records of four bytes
+const word HSCROLL = 0xA302;    // the window's offset, in pixels
+
+// The card's own record layout, so a struct goes across as it stands.
+struct Sprite {
+    byte tile;
+    byte colour;
+    byte x;
+    byte y;
+};
+
+struct Sprite player = {'@', 28, 120, 120};
+
+void show(word n, struct Sprite* s) {
+    __vwrite(SPRITES + n * 4, s, 4);
+}
+
+word main() {
+    __out(VIDMODE, MODE_TILE);
+    show(0, &amp;player);
+
+    word scroll = 0;
+    while (1) {
+        __waitframe();                              // 50 times a second
+        word k = __getkey();
+        if (k != 0 &amp;&amp; ((k &gt;&gt; 8) &amp; KEY_DOWN) != 0) {
+            word key = k &amp; 255;
+            if (key == 'a' &amp;&amp; player.x &gt; 4) player.x -= 4;
+            if (key == 'd' &amp;&amp; player.x &lt; 236) player.x += 4;
+            show(0, &amp;player);
+        }
+        __out(VIDADDR, HSCROLL);                    // drift the map under the sprite
+        __out(VIDDATA, scroll);
+        if (++scroll &gt; 1792) scroll = 0;            // the scroll registers stop at 1792
+    }
+    return 0;
+}</code></pre></div>
+
+  <h3>Habits that keep it fast</h3>
+  <ul>
+    <li><strong>Set up once, change little.</strong> Shapes, palette and the first picture go across at the start;
+      after that, touch only what moved. <a href="https://github.com/mrggvg/monac/blob/main/examples/3-graphics/ivona.mona">ivona.mona</a> never clears the screen
+      after its first frame, and erases a letter by drawing it again in colour 0.</li>
+    <li><strong>A pixel costs four instructions</strong> — two writes, each needing the value in <code>A</code> —
+      and nothing makes it cheaper, because <code>VIDADDR</code> never advances. Carry the address rather than
+      recomputing <code>y * 256 + x</code>, as <a href="https://github.com/mrggvg/monac/blob/main/examples/3-graphics/cube.mona">cube.mona</a>'s line drawer
+      does.</li>
+    <li><strong>Tile mode draws 256 pixels a write.</strong> For anything built of blocks, a map cell is far
+      cheaper than pixels — <a href="https://github.com/mrggvg/monac/blob/main/examples/3-graphics/blocks.mona">blocks.mona</a> draws a whole landscape from four
+      ROM shapes, with no shapes uploaded at all.</li>
+    <li><strong>Let the card remember.</strong> The map can be read back, so a game can ask the card what is on a
+      square instead of keeping its own copy — <a href="https://github.com/mrggvg/monac/blob/main/examples/5-games/snake.mona">snake.mona</a> detects collisions
+      that way.</li>
+  </ul>
+</section>
+
+
+<section id="heap" class="reveal">
+  <h2><span class="num">12</span> The heap</h2>
+  <div class="code"><pre><code class="mona">struct Node* node = __alloc(sizeof(struct Node));
+if (node == 0) return 1;        // always check: the machine has 4 KB
+node->key = 7;
+__free(node);                   // freeing 0 is allowed, and does nothing</code></pre></div>
+  <p>A program that calls <code>__alloc</code> gets a heap; one that does not, does not. Nothing has to be
+    enabled — a forgotten flag would be a failure that teaches nothing, so the compiler reads the need off the
+    source. It reads the <em>shape</em> off the source too, and picks one of three allocators accordingly:</p>
+  <div class="tw"><table>
+    <tr><th>tier</th><th>chosen when</th><th>cost</th></tr>
+    <tr><td>bump</td><td>the program never frees</td><td>8 instructions, no bookkeeping at all</td></tr>
+    <tr><td>slab</td><td>every allocation is the same constant size</td><td>one bit per cell, plus a hint</td></tr>
+    <tr><td>bitmap</td><td>anything else</td><td>general, still headerless</td></tr>
+  </table></div>
+  <p><code>__free</code> checks what it is handed. A pointer that is outside the heap, misaligned, not the start
+    of a block, or already freed never came from <code>__alloc</code> — so rather than quietly corrupting the
+    heap it prints <code>HEAP CORRUPT</code> and halts.</p>
+  <div class="note bad"><b>Neither is re-entrant.</b> If an interrupt handler allocates and the program does too,
+    both can be handed the same memory: each reads a word, decides from it, and writes it back. The compiler
+    warns when it can see both. The fix is <code>__cli()</code> / <code>__sti()</code> around the program's own
+    allocations.</div>
+  <div class="note tip"><b>Write <code>sizeof</code>, not the number.</b> <code>__alloc(6)</code> works today and
+    keeps working — silently and wrongly — the moment someone adds a member.</div>
+  <div class="note warn"><b>Reach for it last.</b> A fixed array is usually the better tool on a 4 KB machine: the
+    compiler reports its size before the program runs, there is no allocator in the image, and nothing can run out
+    halfway through. The heap earns its place when a program genuinely cannot know how much it will need.
+    <a href="https://github.com/mrggvg/monac/blob/main/examples/4-data/tree.mona">tree.mona</a> builds a search tree
+    from a pool of nodes; <a href="https://github.com/mrggvg/monac/blob/main/examples/4-data/heap.mona">heap.mona</a>
+    is the one example that allocates.</div>
+</section>
+
+<section id="interrupts" class="reveal">
+  <h2><span class="num">13</span> Interrupts</h2>
+  <p>One vector, at <code>0x0003</code>, shared by every device — so a program has exactly one handler and
+    works out who called by reading IRQSTATUS. The address is stored at run time, so handlers can be swapped.</p>
+  <div class="code" data-title="interrupt.mona, in essence"><pre><code class="mona">word ticks = 0;
+
+void onIrq() {
+    word pending = __in(1);         // IRQSTATUS: who asked
+    if (pending & 2) {              // bit 1: the timer
+        ticks = ticks + 1;
+    }
+    __out(2, pending);              // IRQEOI: acknowledge, or IRET returns
+}                                   // straight back into the same request
+
+word main() {
+    __setisr(&onIrq);               // install it
+    __out(0, 2);                    // IRQMASK: the timer only
+    __out(3, 1000);                 // TMRPRELOAD: every 1001 instructions
+    __sti();                        // and let interrupts through
+    while (1) { }
+}</code></pre></div>
+  <p>Delivery needs <strong>both</strong> the device's bit in IRQMASK and the global enable from
+    <code>__sti()</code>. A handler cannot interrupt itself: entering one clears the global enable and
+    <code>IRET</code> restores it. Keep it short — everything it does happens while the program is stopped.</p>
+  <h3>Read <code>KBDDATA</code> before you acknowledge</h3>
+  <p>The keypad is the only <em>level</em>-triggered device here. A keypress raises both the
+    controller's level bit and its status bit; reading <code>KBDDATA</code> lowers the level and
+    <em>only</em> the level, and <code>IRQEOI</code> clears the status bit — except that
+    <code>IRQEOI</code> is <code>status ^= value</code> followed by <code>status |= level</code>,
+    so it restores whatever the level still asserts. Both steps are needed, in that order.</p>
+  <div class="tw"><table>
+    <tr><th>what the handler does</th><th>what happens</th></tr>
+    <tr><td>reads <code>KBDDATA</code>, then <code>IRQEOI</code></td><td>correct — one keypress, one entry</td></tr>
+    <tr><td><code>IRQEOI</code>, then reads <code>KBDDATA</code></td><td>the level was still high, so the status bit comes straight back and the handler runs <strong>twice</strong> for one press. Nothing hangs; a counter is just doubled</td></tr>
+    <tr><td><code>IRQEOI</code>, never reads <code>KBDDATA</code></td><td>the level never falls, so every acknowledgement re-raises the request and the program stops making progress</td></tr>
+  </table></div>
+  <div class="note bad"><b>The middle one is what bites</b>, because it does not look like an
+    interrupt bug — it looks like a game reacting twice to one key. And since <code>IRQEOI</code>
+    is an XOR, acknowledging a line that is <em>not</em> raised <b>sets</b> it: write back what
+    you read from <code>IRQSTATUS</code>, never a constant you assumed.</div>
+  <div class="note"><b>The timer counts instructions, not time</b>, because every instruction here is one clock
+    tick. A second is however many instructions the simulator runs per second, which is the speed in its Speed
+    menu: with the preload at 1000, ticks per second is the speed in kHz.</div>
+</section>
+
+<section id="memory" class="reveal">
+  <h2><span class="num">14</span> Where everything lives</h2>
+  <p>4,128 bytes altogether: 4,096 of RAM, then the 32-byte text display. Inside the RAM, three things share
+    one space with nothing between them.</p>
+  <div class="map">
+    <div class="row"><span class="addr">0x0000</span><span class="band image">image <small>code, then globals, strings, jump tables</small></span></div>
+    <div class="row"><span class="addr"></span><span class="band heap">heap <small>if the program allocates — grows up ↓</small></span></div>
+    <div class="row"><span class="addr"></span><span class="band free">free <small>whatever is left over</small></span></div>
+    <div class="row"><span class="addr">0x0FFF</span><span class="band stack">stack <small>grows down ↑</small></span></div>
+    <div class="row"><span class="addr">0x1000</span><span class="band disp">text display <small>32 bytes, memory mapped</small></span></div>
+  </div>
+  <div class="note bad"><b>Nothing detects a collision.</b> A stack that grows into the code overwrites it, and
+    the machine's first complaint is <code>Invalid opcode</code> at some unrelated address — long after the
+    evidence is gone. That is why the compiler computes the stack requirement up front where it can, and checks
+    at run time where it cannot.</div>
+</section>
+
+<section id="traps" class="reveal">
+  <h2><span class="num">15</span> Things that bite</h2>
+  <p>Every one of these has actually cost someone time.</p>
+  <ul>
+    <li><strong><code>MUL</code> is 16 × 16 into 16 bits.</strong> The top half is gone, with no warning:
+      <code>1000 * 1000</code> is 16960. <code>cube.mona</code> uses a fixed-point scale of 128 rather than 256
+      for exactly this reason.</li>
+    <li><strong>There is no <code>MOD</code> instruction.</strong> <code>a % b</code> becomes
+      <code>a - (a / b) * b</code> — three instructions, not one.</li>
+    <li><strong>Pointer subtraction is in bytes.</strong> The one deliberate departure from C.</li>
+    <li><strong>Nothing clips and nothing is bounds checked.</strong> A screen coordinate that leaves 0…255
+      does not fault; it wraps into video memory and draws somewhere else entirely.</li>
+    <li><strong>Structs are packed</strong>, so <code>sizeof</code> will not agree with a C compiler's.</li>
+    <li><strong>A big function may not compile at <code>-O0</code>.</strong> An indirect operand's displacement
+      is a signed byte, so a frame reaches 64 slots — and unoptimized, every intermediate takes one.</li>
+    <li><strong>4,096 bytes is everything.</strong> <code>--stats</code> reports what a program costs, and the
+      compiler refuses one that does not fit rather than emitting it.</li>
+  </ul>
+</section>
+
+<section id="cli" class="reveal">
+  <h2><span class="num">16</span> Using monac</h2>
+  <p><code>monac</code> takes one source file and writes one assembly file. Options may come before or after the
+    file name.</p>
+  <div class="code" data-title="synopsis"><pre><code>monac &lt;input.mona&gt; [options]</code></pre></div>
+  <p>Without <code>-o</code>, the output goes next to the input with its extension changed —
+    <code>games/snake.mona</code> becomes <code>games/snake.asm</code>. Messages and <code>--stats</code> go to
+    standard error, so they never end up inside the assembly.</p>
+
+  <h3>Every option</h3>
+  <div class="tw"><table>
+    <tr><th class="mono">option</th><th>what it does</th></tr>
+    <tr><td class="mono">-o &lt;file&gt;</td><td>write the assembly to <code>file</code>; <code>-o -</code> prints it
+      to standard output instead</td></tr>
+    <tr><td class="mono">-O1</td><td>optimize, the default: locals in registers, constants folded, dead code
+      removed, invariant work hoisted out of loops, no frame pointer, and a peephole pass over the result</td></tr>
+    <tr><td class="mono">-O0</td><td>no optimization — every value lives in the stack frame. The plainest possible
+      translation of each line, which makes it good for comparing against <code>-O1</code>; a large function may
+      not fit its frame limit</td></tr>
+    <tr><td class="mono">-O2</td><td>accepted, and today the same as <code>-O1</code></td></tr>
+    <tr><td class="mono">--stats</td><td>after compiling, report the image size, the line count and the stack bound
+      (below)</td></tr>
+    <tr><td class="mono">--dump-asm</td><td>print the assembly to standard output as well as writing the file</td></tr>
+    <tr><td class="mono">--dump-ir</td><td>print the intermediate representation and stop — nothing is written</td></tr>
+    <tr><td class="mono">--dump-ast</td><td>print the parsed syntax tree and stop</td></tr>
+    <tr><td class="mono">--dump-tokens</td><td>print the token stream and stop. The dumps stop early on purpose, so
+      <code>--dump-ast</code> still works on a program the type checker would reject</td></tr>
+    <tr><td class="mono">-Wall</td><td>enable additional warnings</td></tr>
+    <tr><td class="mono">-Werror</td><td>treat warnings as errors: any warning fails the compile</td></tr>
+    <tr><td class="mono">--heap &lt;n|auto&gt;</td><td>cap the heap at <code>n</code> bytes. Without it, a program
+      that calls <code>__alloc</code> gets all the RAM left over, and one that does not gets no heap at all</td></tr>
+    <tr><td class="mono">--heap-strategy &lt;s&gt;</td><td><code>bump</code>, <code>slab</code>,
+      <code>bitmap</code> or <code>auto</code>: force which allocator is emitted. <code>auto</code>, the default,
+      picks the fastest one the program qualifies for</td></tr>
+    <tr><td class="mono">--no-entry</td><td>emit the functions alone, without the startup code that calls
+      <code>main</code>; for testing</td></tr>
+    <tr><td class="mono">-h, --help</td><td>print the option list</td></tr>
+  </table></div>
+
+  <h3>What <code>--stats</code> tells you</h3>
+  <div class="code" data-title="terminal"><pre><code>$ monac cube.mona --stats
+monac: 454 instructions, 1480 bytes of 4096
+monac: stack at most 18 bytes, 2616 bytes free</code></pre></div>
+  <ul>
+    <li><strong>bytes of 4096</strong> — the image: code, globals, strings and tables. It is exact: the test suite
+      checks it against the simulator's own assembler.</li>
+    <li><strong>instructions</strong> — every line of the image, data directives included, so a table in an
+      initializer list counts once per entry. A measure of size. Speed is how many instructions <em>run</em>, which
+      depends on the input and the loops.</li>
+    <li><strong>stack at most</strong> — the deepest the stack can go, from the call graph. A recursive program
+      has no such bound: it reports <code>unbounded (recursive)</code>, and the compiler adds a check that stops
+      the program with <code>STACK OVERFLOW</code> on the display instead of letting it overwrite itself.</li>
+    <li><strong>bytes free</strong> — what is left once the image and the stack are counted. A heap, if the
+      program has one, lives there.</li>
+  </ul>
+
+  <h3>Exit status</h3>
+  <div class="tw"><table>
+    <tr><th class="mono">code</th><th>meaning</th></tr>
+    <tr><td class="mono">0</td><td>compiled; there may have been warnings</td></tr>
+    <tr><td class="mono">1</td><td>errors — or, with <code>-Werror</code>, warnings. No assembly is written</td></tr>
+    <tr><td class="mono">2</td><td>the command line itself was wrong: no input file, an unknown option</td></tr>
+  </table></div>
+
+  <h3>Recipes</h3>
+  <div class="code" data-title="terminal"><pre><code>monac prog.mona --dump-asm -o /dev/null       # read what it compiles to (-o NUL on Windows)
+monac prog.mona -O0 --dump-asm -o /dev/null   # the same line by line, unoptimized
+monac prog.mona --stats -o /dev/null          # does it fit, and how much stack?
+monac prog.mona -Wall -Werror                 # strict: refuse anything suspicious</code></pre></div>
+</section>
+
+<section id="messages" class="reveal">
+  <h2><span class="num">17</span> Reading the compiler's messages</h2>
+  <p>Every message names the file, the line and the column, says whether it is an <strong>error</strong> (no
+    output) or a <strong>warning</strong> (output, but look), and shows the line with the spot underlined. Some add
+    a <code>note</code> saying why, or what to do.</p>
+  <div class="code" data-title="an error"><pre><code>e1.mona:3:12: error: undeclared identifier 'y'
+        return y + x;
+               ^</code></pre></div>
+  <div class="code" data-title="a warning, with a note"><pre><code>e3.mona:4:9: warning: mixing signed and unsigned operands in '&lt;'
+        if (a &lt; b) return 1;
+            ^~~~~
+    note: the result is treated as signed</code></pre></div>
+  <p>Fix the <em>first</em> error first. One mistake can confuse the parser into reporting a few more after it,
+    and those disappear with the first.</p>
+
+  <h3>The ones you will meet</h3>
+  <div class="tw"><table>
+    <tr><th>message</th><th>what it means, and what to do</th></tr>
+    <tr><td>undeclared identifier 'y'</td><td>a typo, or a local used before its declaration or outside its
+      block. Locals are in scope from where they are declared to the end of their <code>{ }</code>.</td></tr>
+    <tr><td>expected ';' after the return statement, found '}'</td><td>something is missing just <em>before</em>
+      the caret. The caret marks where the parser noticed, which is the token after the gap.</td></tr>
+    <tr><td>assigning 'word' to 'byte' truncates to 8 bits</td><td>arithmetic is always 16-bit, so storing a
+      result into a <code>byte</code> may lose the top half. If it cannot, show the compiler: <code>&amp; 255</code>,
+      a <code>% 10</code>, or a cast <code>(byte)</code> all say so. <code>'0' + n % 10</code> needs nothing,
+      because the compiler can see it is at most 57.</td></tr>
+    <tr><td>mixing signed and unsigned operands in '&lt;'</td><td>an <code>sword</code> compared with a
+      <code>word</code> has no single right answer — is -1 less than 3, or is 65535 more? The compiler picks one and
+      says which. Cast one side so both agree.</td></tr>
+    <tr><td>'x' is const</td><td>you assigned, stepped or wrote through something declared read-only.</td></tr>
+    <tr><td>'f' is declared but never defined</td><td>a prototype with no body anywhere in the file.</td></tr>
+    <tr><td>function 'rotate' needs 67 frame slots, but at most 64 can be addressed</td><td>at <code>-O0</code>,
+      every intermediate value gets its own stack slot, and a big function runs out. Compile with
+      <code>-O1</code>, or split the function.</td></tr>
+    <tr><td>the program is about 4224 bytes, which does not fit in 4096 bytes of RAM</td><td>the image is too big.
+      <code>--stats</code> on a smaller version shows where it goes: large arrays count in full, so a
+      <code>word</code> array that only holds small numbers is twice the size of the <code>byte</code> one it could
+      be.</td></tr>
+  </table></div>
+
+  <h3>When it compiles but goes wrong on the machine</h3>
+  <div class="tw"><table>
+    <tr><th>you see</th><th>the usual cause</th></tr>
+    <tr><td><code>STACK OVERFLOW</code> on the display</td><td>recursion went deeper than the RAM left for it. The
+      compiler's check caught it before the stack reached the code.</td></tr>
+    <tr><td><code>HEAP CORRUPT</code> on the display</td><td><code>__free</code> was handed a pointer
+      <code>__alloc</code> never returned, or one already freed.</td></tr>
+    <tr><td>the simulator reports an invalid opcode</td><td>something overwrote code: an array written past its
+      end, or a stray pointer. Nothing is bounds checked.</td></tr>
+    <tr><td>it never halts</td><td>a loop that does not end — or an interrupt handler that does not acknowledge
+      through <code>IRQEOI</code>, and so is entered again the moment it returns.</td></tr>
+    <tr><td>a different answer at <code>-O0</code> and <code>-O1</code></td><td>that is a compiler bug, since the
+      test suite requires the two to agree on every program. Please report it with the program.</td></tr>
+  </table></div>
+</section>
+
+<section id="debugging" class="reveal">
+  <h2><span class="num">18</span> Running and debugging</h2>
+  <p>The simulator shows every register and every byte of memory, and can run one instruction at a time. The
+    compiler's job is to make the assembly readable enough that this is useful.</p>
+
+  <h3>Reading the output</h3>
+  <p>This is all of <a href="https://github.com/mrggvg/monac/blob/main/examples/1-basics/simple.mona">simple.mona</a> at <code>-O1</code>:</p>
+  <div class="code" data-title="simple.asm"><pre><code>m_add:
+        ADD   B, [SP+3]
+        MOV   A, B
+.L0_epi_add:
+        RET
+
+m_main:
+        PUSH  20                            ; arg 1
+        MOV   B, 10
+        CALL  m_add
+        ADD   SP, 2                         ; reclaim arguments
+.L1_epi_main:
+        RET</code></pre></div>
+  <div class="tw"><table>
+    <tr><th>you see</th><th>it is</th></tr>
+    <tr><td class="mono">m_add</td><td>the function <code>add</code>. Every function is <code>m_</code> and its
+      name</td></tr>
+    <tr><td class="mono">g_score</td><td>the global <code>score</code></td></tr>
+    <tr><td class="mono">.L4_then, .L7_endif</td><td>the branches of an <code>if</code>, a loop's head and exit, and
+      so on — numbered, and named after what they belong to</td></tr>
+    <tr><td class="mono">.L0_epi_add</td><td>the end of <code>add</code>, where every <code>return</code>
+      goes</td></tr>
+    <tr><td class="mono">[SP+3]</td><td>a value in the stack frame, counted in bytes up from the stack
+      pointer</td></tr>
+  </table></div>
+  <p>And the calling convention, which is visible above: <strong>the first argument travels in
+    <code>B</code></strong>, the rest are pushed, and <strong>the result comes back in <code>A</code></strong>. So
+    <code>add</code> finds <code>a</code> in <code>B</code> and <code>b</code> on the stack, three bytes up — above
+    the return address <code>CALL</code> pushed. No register survives a call, and the caller takes its arguments
+    back off the stack afterwards. When <code>main</code> returns, the startup code halts the machine with
+    <code>main</code>'s result still in <code>A</code>.</p>
+
+  <h3>Registers</h3>
+  <div class="tw"><table>
+    <tr><th class="mono">register</th><th>what the compiler uses it for</th></tr>
+    <tr><td class="mono">A</td><td>scratch, the only register <code>OUT</code>, <code>MUL</code> and
+      <code>DIV</code> use, and the return value</td></tr>
+    <tr><td class="mono">B, C</td><td>local variables, handed out by the register allocator; <code>B</code> also
+      carries the first argument</td></tr>
+    <tr><td class="mono">D</td><td>a frame pointer in the hand-written runtime helpers; compiled functions address
+      their frame from <code>SP</code> instead</td></tr>
+    <tr><td class="mono">SP</td><td>the stack pointer, starting at <code>0x0FFF</code> and growing down</td></tr>
+  </table></div>
+
+  <h3>Techniques that work</h3>
+  <ul>
+    <li><strong>Slow it down.</strong> At the simulator's default of 4 Hz you can watch each instruction execute
+      and the registers change. The labels above tell you where you are in the source.</li>
+    <li><strong>Stop where you want to look.</strong> <code>__halt()</code> stops the machine on the spot, with
+      every register and byte left as it was.</li>
+    <li><strong>Print to the display.</strong> The text display is 32 bytes of memory at <code>0x1000</code>, so
+      writing <code>SCREEN[0] = '0' + x % 10</code> is a one-line trace.</li>
+    <li><strong>Return it.</strong> Whatever <code>main</code> returns is in <code>A</code> when the machine
+      halts.</li>
+    <li><strong>Compare levels.</strong> Compile with <code>-O0</code>: the code is longer but every variable
+      lives at a fixed place in the frame, which is easier to watch in the memory view.</li>
+  </ul>
+</section>
+
+<section id="fast" class="reveal">
+  <h2><span class="num">19</span> Writing fast Mona</h2>
+  <p>On this machine every instruction takes exactly one clock tick, so a program's running time is simply the
+    number of instructions it executes. There are no caches or pipelines to reason about — which makes it
+    unusually easy to know what is fast. The rules below are the ones the examples follow, and each one comes from
+    measuring them.</p>
+  <ol>
+    <li><strong>Name constants with <code>enum</code> or <code>const</code>, never a plain variable.</strong>
+      Both are constants, so <code>__out(VIDADDR, x)</code> is <code>OUT 8</code> and <code>i &lt; LETTERS</code>
+      compares with an immediate. <code>OUT</code> takes nothing but an immediate or a register, so a port in an
+      ordinary global costs a load every time — and in a tight loop, with every register busy, a push and a pop
+      as well.
+      <div class="code"><pre><code class="mona">enum Port { VIDMODE = 7, VIDADDR = 8, VIDDATA = 9 };
+const word WIDTH = 256;
+byte* const SCREEN = 4096;          // a const pointer with a constant address folds too</code></pre></div></li>
+    <li><strong>Write tables as initializer lists.</strong> A global's list is data in the image. Filling the same
+      table with assignments at startup costs the code to do it as well as the table.
+      <div class="code"><pre><code class="mona">const sword quarter[17] = {0, 13, 25, 37, 49, 60, 71, 81, 91, 99, 106, 113, 118, 123, 126, 127, 128};</code></pre></div></li>
+    <li><strong>Prefer fixed arrays to the heap.</strong> If the program knows how much it needs, declare it: no
+      allocator in the image, no bookkeeping, nothing that can fail at run time, and <code>--stats</code> shows the
+      cost up front. <a href="https://github.com/mrggvg/monac/blob/main/examples/4-data/tree.mona">tree.mona</a> takes its nodes from a pool.</li>
+    <li><strong>Keep <code>word</code> and unsigned where you can.</strong> The machine has no sign flag, so a
+      signed comparison costs extra instructions on each side, and signed <code>/</code> and <code>%</code> go
+      through a helper routine. If a value cannot be negative, do not declare it signed.</li>
+    <li><strong>Mind the loop, not the program.</strong> Only the innermost loops matter. A call inside one costs
+      the pushes, the <code>CALL</code>, the <code>RET</code> and the clean-up, every time round — for a two-line
+      helper, spell it out. <code>cube.mona</code>'s drawing loop was 34 instructions a pixel before its helper was
+      spelled out and its address carried (the next rule); it is about 18 now.</li>
+    <li><strong>Carry a value instead of recomputing it.</strong> <code>y * 256 + x</code> every pixel is three
+      instructions; adding 1 or 256 to an address you already have is one.</li>
+    <li><strong>Two values fit in registers.</strong> <code>B</code> and <code>C</code> are all the allocator has.
+      The rest live in the frame — and reading one there is free, since the ALU takes a memory operand at no extra
+      cost, but writing one is an extra store. A loop that updates two values is cheaper than one that updates
+      three.</li>
+    <li><strong>Divide by powers of two, unsigned.</strong> For a <code>word</code>, the compiler turns
+      <code>i % 128</code> into <code>i &amp; 127</code> and <code>i / 8</code> into a shift — one instruction
+      each. For an <code>sword</code>, which has to round toward zero, the same <code>% 128</code> is a call to a
+      helper routine. A ring buffer whose length is a power of two wraps with an <code>AND</code>.</li>
+    <li><strong>Write out what is short and known.</strong> When every value is a constant, straight-line
+      code folds to one <code>MOV</code> and one <code>OUT</code> per write — smaller and faster than a loop,
+      which pays for its counter and its loads, or a helper, which pays for its calls.
+      <a href="https://github.com/mrggvg/monac/blob/main/examples/2-hardware/graphics.mona">graphics.mona</a> writes
+      four tiles in 25 instructions that way; the loop was 40, and ran more than four times as many.</li>
+    <li><strong>Read what you wrote.</strong> <code>--dump-asm</code> and a count of the instructions inside your
+      hottest loop settle any argument about which version is faster.</li>
+  </ol>
+</section>
+
+<section id="examples" class="reveal">
+  <h2><span class="num">20</span> The examples</h2>
+  <p>Twelve programs, each built around one thing the machine can do, and each run by the test suite so none of
+    them can quietly stop working. They are written in the style of the previous section, so they are worth
+    reading as much as running. Roughly in this order:</p>
+  <div class="tw"><table>
+    <tr><th>program</th><th>what it shows</th><th class="mono">bytes</th><th>run it at</th></tr>
+    <tr><td><a href="https://github.com/mrggvg/monac/blob/main/examples/1-basics/simple.mona">simple</a></td><td>a function, a call, a result in <code>A</code></td><td class="mono">35</td><td>any speed</td></tr>
+    <tr><td><a href="https://github.com/mrggvg/monac/blob/main/examples/1-basics/sandbox.mona">sandbox</a></td><td>Euclid's algorithm — compare <code>-O0</code> and <code>-O1</code> on it</td><td class="mono">79</td><td>any speed</td></tr>
+    <tr><td><a href="https://github.com/mrggvg/monac/blob/main/examples/1-basics/complex.mona">complex</a></td><td>an enum, a <code>switch</code>, <code>?:</code>, signed division, recursion</td><td class="mono">630</td><td>any speed</td></tr>
+    <tr><td><a href="https://github.com/mrggvg/monac/blob/main/examples/2-hardware/graphics.mona">graphics</a></td><td>the graphics card through <code>__out</code></td><td class="mono">80</td><td>any speed</td></tr>
+    <tr><td><a href="https://github.com/mrggvg/monac/blob/main/examples/2-hardware/interrupt.mona">interrupt</a></td><td>one keyboard interrupt, as small as it goes</td><td class="mono">147</td><td>10 kHz, and press a key soon</td></tr>
+    <tr><td><a href="https://github.com/mrggvg/monac/blob/main/examples/2-hardware/stopwatch.mona">stopwatch</a></td><td>two interrupt sources and the text display</td><td class="mono">596</td><td>10 kHz; space resets</td></tr>
+    <tr><td><a href="https://github.com/mrggvg/monac/blob/main/examples/3-graphics/blocks.mona">blocks</a></td><td>a scrolling landscape from four glyphs of the tile ROM</td><td class="mono">662</td><td>10 kHz or more</td></tr>
+    <tr><td><a href="https://github.com/mrggvg/monac/blob/main/examples/4-data/tree.mona">tree</a></td><td>a binary search tree from a node pool, and recursion</td><td class="mono">750</td><td>any speed</td></tr>
+    <tr><td><a href="https://github.com/mrggvg/monac/blob/main/examples/5-games/snake.mona">snake</a></td><td>a whole game: tiles, sprites, a ring buffer, the keypad</td><td class="mono">3104</td><td>50 kHz; A and D turn</td></tr>
+    <tr><td><a href="https://github.com/mrggvg/monac/blob/main/examples/3-graphics/cube.mona">cube</a></td><td>a rotating 3D wireframe, in fixed point</td><td class="mono">1480</td><td>50 kHz</td></tr>
+    <tr><td><a href="https://github.com/mrggvg/monac/blob/main/examples/3-graphics/ivona.mona">ivona</a></td><td>a name in lights, one letter a second, on the timer</td><td class="mono">1641</td><td>50 kHz</td></tr>
+    <tr><td><a href="https://github.com/mrggvg/monac/blob/main/examples/4-data/heap.mona">heap</a></td><td><code>__alloc</code>, <code>__free</code> and a linked list — the one that allocates</td><td class="mono">753</td><td>any speed</td></tr>
+  </table></div>
+  <p>The timer counts instructions rather than time, so the two programs that keep time need telling how fast the
+    simulator runs: <code>TICKS_PER_SECOND</code> is 10 in <code>stopwatch</code> and 50 in <code>ivona</code>,
+    which is the speed in kHz. Change the constant to match your speed setting.
+    <a href="https://github.com/mrggvg/monac/blob/main/examples/README.md">The examples README</a> walks
+    through the stopwatch, the cube, the tree and ivona in detail.</p>
+</section>
+
+<section id="ideas" class="reveal">
+  <h2><span class="num">21</span> Ideas to build</h2>
+  <p>Projects that fit in 4 KB, roughly easiest first, each with the example that is the best place to start.
+    Most need nothing the examples do not already show.</p>
+  <div class="tw"><table>
+    <tr><th>project</th><th>what it takes</th><th>start from</th></tr>
+    <tr><td>A talking display</td><td>a menu or a tiny text adventure on the 32-character display, driven by
+      <code>__getkey</code></td><td><a href="https://github.com/mrggvg/monac/blob/main/examples/2-hardware/stopwatch.mona">stopwatch</a></td></tr>
+    <tr><td>Sorting, visualized</td><td>an array drawn as bars in bitmap mode, one swap per
+      <code>__waitframe</code>, so you watch bubble sort lose to insertion sort</td><td>the pixels recipe
+      above</td></tr>
+    <tr><td>A bouncing ball</td><td>a sprite with a velocity, reversed at the edges; then gravity, in fixed
+      point</td><td>the sprite recipe above</td></tr>
+    <tr><td>A reaction timer</td><td>wait a random time with <code>__random</code>, then measure the key press in
+      frames or with <code>__ticks</code></td><td><a href="https://github.com/mrggvg/monac/blob/main/examples/2-hardware/interrupt.mona">interrupt</a></td></tr>
+    <tr><td>Pong against the wall</td><td>a paddle on the keypad, a ball sprite, a score on the text display</td>
+      <td><a href="https://github.com/mrggvg/monac/blob/main/examples/5-games/snake.mona">snake</a></td></tr>
+    <tr><td>Big digits</td><td>a clock whose digits are drawn from the block glyphs, each digit a table of cells</td>
+      <td><a href="https://github.com/mrggvg/monac/blob/main/examples/3-graphics/blocks.mona">blocks</a> and <a href="https://github.com/mrggvg/monac/blob/main/examples/2-hardware/stopwatch.mona">stopwatch</a></td></tr>
+    <tr><td>The Game of Life</td><td>a 64 × 32 grid, two cells to a tile with the half-block glyphs; the
+      generations in two <code>byte</code> arrays</td><td><a href="https://github.com/mrggvg/monac/blob/main/examples/3-graphics/blocks.mona">blocks</a></td></tr>
+    <tr><td>A starfield</td><td>stars flying toward you: 3D points projected like the cube's corners, and erased
+      by redrawing in colour 0</td><td><a href="https://github.com/mrggvg/monac/blob/main/examples/3-graphics/cube.mona">cube</a> and
+      <a href="https://github.com/mrggvg/monac/blob/main/examples/3-graphics/ivona.mona">ivona</a></td></tr>
+    <tr><td>A maze</td><td>generate it with an explicit stack in a fixed array, draw it in tiles, then solve it
+      step by step</td><td><a href="https://github.com/mrggvg/monac/blob/main/examples/4-data/tree.mona">tree</a></td></tr>
+    <tr><td>Breakout</td><td>bricks as tiles, ball and paddle as sprites, and collisions by reading the map
+      back</td><td><a href="https://github.com/mrggvg/monac/blob/main/examples/5-games/snake.mona">snake</a></td></tr>
+    <tr><td>The Mandelbrot set</td><td>fixed-point arithmetic with <code>__fixmul</code>, one pixel at a time — slow
+      enough to watch it appear</td><td><a href="https://github.com/mrggvg/monac/blob/main/examples/3-graphics/cube.mona">cube</a></td></tr>
+  </table></div>
+  <p>Whichever you pick, <code>--stats</code> tells you how much of the 4 KB it is using before you run it, and
+    <a href="#fast">Writing fast Mona</a> has the habits that keep it small and quick.</p>
+</section>
+
+<section id="missing" class="reveal">
+  <h2><span class="num">22</span> What is not here</h2>
+  <p><code>typedef</code>, designated initializers, variadic functions, a preprocessor, separate compilation,
+    floating point.</p>
+  <p>None of those is coming, and <a href="https://github.com/mrggvg/monac/blob/main/docs/design/roadmap.md">roadmap.md</a> says why for each. For <code>typedef</code>
+    and the preprocessor: every type starting with a
+    keyword is what lets <code>(byte)x</code> and <code>(x)</code> be told apart without a symbol table.</p>
+  <p>Floating point is absent because the machine has none. Fixed point is the answer, and
+    <a href="https://github.com/mrggvg/monac/blob/main/examples/3-graphics/cube.mona">cube.mona</a> — a rotating 3D
+    cube in 1,480 bytes — is what it looks like.</p>
+  <div class="cta" style="margin-top:26px">
+    <a class="btn primary" href="https://github.com/mrggvg/monac/blob/main/docs/reference/language.md">Read the full spec →</a>
+    <a class="btn" href="https://github.com/mrggvg/monac/tree/main/examples">Twelve worked examples</a>
+  </div>
+</section>
+
+</main>
+</div>
+
+<footer>
+  <div class="foot-in">
+    <span>Mona &amp; <code>monac</code> — a compiler for the 16-bit Assembly Simulator.</span>
+    <span><a href="https://github.com/mrggvg/monac">github.com/mrggvg/monac</a></span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- theme: system by default, remembered once chosen ---------- */
+  var root = document.documentElement;
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } }
+  };
+  var saved = store.get('mona-theme');
+  if (saved === 'dark' || saved === 'light') root.setAttribute('data-theme', saved);
+  document.getElementById('theme').addEventListener('click', function () {
+    var dark = root.getAttribute('data-theme')
+      ? root.getAttribute('data-theme') === 'dark'
+      : !window.matchMedia('(prefers-color-scheme: light)').matches;
+    var next = dark ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    store.set('mona-theme', next);
+  });
+
+  /* ---------- a highlighter for Mona, since no library knows it ---------- */
+  var RE = new RegExp([
+    '(\\/\\/[^\\n]*|\\/\\*[\\s\\S]*?\\*\\/)',                       // 1 comment
+    '("(?:\\\\.|[^"\\\\])*"|\'(?:\\\\.|[^\'\\\\])*\')',             // 2 string or char
+    '\\b(0x[0-9a-fA-F]+|0b[01]+|\\d+)\\b',                          // 3 number
+    '(__[A-Za-z_]\\w*)',                                            // 4 builtin
+    '\\b(word|sword|byte|sbyte|void|struct|union)\\b',                    // 5 type
+    '\\b(if|else|do|while|for|switch|case|default|break|continue|return|sizeof|const|static|enum|goto)\\b', // 6 keyword
+    '\\b([A-Za-z_]\\w*)(?=\\s*\\()'                                 // 7 call
+  ].join('|'), 'g');
+  var CLASS = { 1: 'c', 2: 's', 3: 'n', 4: 'b', 5: 't', 6: 'k', 7: 'f' };
+
+  function esc(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function highlight(code) {
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while ((m = RE.exec(code)) !== null) {
+      out += esc(code.slice(last, m.index));
+      var cls = '';
+      for (var g = 1; g <= 7; g++) { if (m[g] !== undefined) { cls = CLASS[g]; break; } }
+      out += '<span class="' + cls + '">' + esc(m[0]) + '</span>';
+      last = m.index + m[0].length;
+    }
+    return out + esc(code.slice(last));
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('code.mona'), function (el) {
+    el.innerHTML = highlight(el.textContent);
+  });
+
+  /* ---------- titles and copy buttons ---------- */
+  Array.prototype.forEach.call(document.querySelectorAll('.code'), function (box) {
+    var title = box.getAttribute('data-title');
+    if (title) {
+      box.classList.add('titled');
+      var bar = document.createElement('div');
+      bar.className = 'code-title';
+      bar.textContent = title;
+      box.insertBefore(bar, box.firstChild);
+    }
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'copy';
+    btn.textContent = 'copy';
+    btn.addEventListener('click', function () {
+      var text = box.querySelector('code').textContent;
+      var done = function () {
+        btn.textContent = 'copied';
+        btn.classList.add('done');
+        setTimeout(function () { btn.textContent = 'copy'; btn.classList.remove('done'); }, 1400);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () { fallback(text, done); });
+      } else {
+        fallback(text, done);
+      }
+    });
+    box.appendChild(btn);
+  });
+  function fallback(text, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:-1000px;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { /* nothing else to offer */ }
+    document.body.removeChild(ta);
+  }
+
+  /* ---------- the palette is a formula, so show the formula ---------- */
+  var pr = document.getElementById('pr'), pg = document.getElementById('pg'), pb = document.getElementById('pb');
+  var swatch = document.getElementById('swatch'), out = document.getElementById('pout');
+  function paint() {
+    var r = +pr.value, g = +pg.value, b = +pb.value;
+    document.getElementById('vr').textContent = r;
+    document.getElementById('vg').textContent = g;
+    document.getElementById('vb').textContent = b;
+    var idx = r * 32 + g * 4 + b;
+    // The palette ROM steps red and green by 36 and blue by 85, so red tops out at
+    // 252 rather than 255 -- except index 255, which is special-cased to pure white.
+    var rgb = idx === 255 ? [255, 255, 255] : [r * 36, g * 36, b * 85];
+    swatch.style.background = 'rgb(' + rgb.join(',') + ')';
+    out.innerHTML = '__out(9, ' + r + ' * 32 + ' + g + ' * 4 + ' + b + ');'
+      + '<br>index <b>' + idx + '</b> &nbsp;·&nbsp; rgb(' + rgb.join(', ') + ')'
+      + (idx === 255 ? ' &nbsp;·&nbsp; the one special case' : '');
+  }
+  [pr, pg, pb].forEach(function (el) { el.addEventListener('input', paint); });
+  paint();
+
+  /* ---------- scroll spy ---------- */
+  var links = {};
+  Array.prototype.forEach.call(document.querySelectorAll('#toc a'), function (a) {
+    links[a.getAttribute('href').slice(1)] = a;
+  });
+  var sections = document.querySelectorAll('main section');
+  if ('IntersectionObserver' in window) {
+    var seen = {};
+    var spy = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { seen[e.target.id] = e.isIntersecting; });
+      var current = null;
+      Array.prototype.forEach.call(sections, function (s) { if (seen[s.id] && !current) current = s.id; });
+      Object.keys(links).forEach(function (id) { links[id].classList.toggle('on', id === current); });
+    }, { rootMargin: '-45% 0px -50% 0px' });
+    Array.prototype.forEach.call(sections, function (s) { spy.observe(s); });
+
+    /* ---------- reveal on first sight ---------- */
+    var rev = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add('in'); rev.unobserve(e.target); }
+      });
+    }, { rootMargin: '0px 0px -8% 0px' });
+    Array.prototype.forEach.call(document.querySelectorAll('.reveal'), function (el) { rev.observe(el); });
+  } else {
+    Array.prototype.forEach.call(document.querySelectorAll('.reveal'), function (el) { el.classList.add('in'); });
+  }
+})();
+</script>
+</body>
+</html>

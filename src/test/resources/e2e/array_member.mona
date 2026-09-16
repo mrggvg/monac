@@ -1,0 +1,53 @@
+// expect: A=0
+//
+// An array that is a struct member decays to its address, like any other array.
+//
+// It used to be loaded from instead: `h.cells[2]` took the first two bytes of `h` as
+// the base address. Read and write agreed on that wrong base, so the array appeared
+// to work — the corruption landed wherever those two bytes pointed, which in the
+// program that found this was the entry stub, three hundred instructions later. The
+// checks below therefore never read a cell through the member alone: they compare the
+// member's address against a second, independently derived address, which is the only
+// way to see the base at all.
+
+struct Holder { word cells[4]; word used; };
+struct Nested { word head; struct Holder inner; };
+
+struct Holder globalHolder;
+struct Nested globalNested;
+
+word main() {
+    struct Holder h;
+    h.used = 5;
+    word* used = &h.used;
+    word* cells = &h.cells[0];
+    if (cells + 4 != used) return 1;            // cells is four words below used
+    h.cells[3] = 42;
+    if (cells[3] != 42) return 2;               // and writing through it lands there
+    if (h.used != 5) return 3;                  // without disturbing the next member
+
+    globalHolder.used = 6;
+    if (&globalHolder.cells[0] + 4 != &globalHolder.used) return 4;
+    globalHolder.cells[3] = 43;
+    word* gcells = &globalHolder.cells[0];
+    if (gcells[3] != 43) return 5;
+    if (globalHolder.used != 6) return 6;
+
+    // A member of a member, and the same array reached through a pointer.
+    globalNested.head = 7;
+    globalNested.inner.used = 8;
+    if (&globalNested.inner.cells[0] != &globalNested.head + 1) return 7;
+    struct Holder* p = &globalNested.inner;
+    p->cells[1] = 44;
+    if (globalNested.inner.cells[1] != 44) return 8;
+    if (globalNested.head != 7) return 9;
+    if (globalNested.inner.used != 8) return 10;
+
+    // An index that is not a constant, so the scaling is computed rather than folded.
+    for (word i = 0; i < 4; i += 1) h.cells[i] = i + 1;
+    word sum = 0;
+    for (word i = 0; i < 4; i += 1) sum += cells[i];
+    if (sum != 10) return 11;
+    if (h.used != 5) return 12;
+    return 0;
+}

@@ -1,0 +1,73 @@
+// expect: A=0
+//
+// ++ and --, prefix and postfix. Returns 0 when every claim holds, otherwise the
+// number of the check that failed.
+
+word calls = 0;
+
+word next() {
+    calls = calls + 1;
+    return calls - 1;          // 0, then 1, then 2, ...
+}
+
+word main() {
+    word a = 5;
+    a++;
+    if (a != 6) return 1;
+    a--;
+    if (a != 5) return 2;
+    ++a;
+    if (a != 6) return 3;
+    --a;
+    if (a != 5) return 4;
+
+    // Prefix yields the new value, postfix the old one.
+    word b = 5;
+    if (++b != 6) return 5;
+    if (b != 6) return 6;
+    word c = 5;
+    if (c++ != 5) return 7;
+    if (c != 6) return 8;
+
+    // A pointer steps by the size of what it points at, not by one byte.
+    word v[3];
+    v[0] = 10;
+    v[1] = 20;
+    v[2] = 30;
+    word* p = &v[0];
+    p++;
+    if (*p != 20) return 9;
+    ++p;
+    if (*p != 30) return 10;
+    p--;
+    if (*p != 20) return 11;
+
+    // A byte steps within a byte and wraps at 256.
+    byte t[2];
+    t[0] = 255;
+    t[0]++;
+    if (t[0] != 0) return 12;
+    t[1] = 0;
+    t[1]--;
+    if (t[1] != 255) return 13;
+
+    // The target's address is computed once, so a side-effecting subscript runs once.
+    word w[4];
+    w[0] = 100;
+    w[1] = 200;
+    w[2] = 300;
+    w[3] = 400;
+    calls = 0;
+    w[next()]++;               // steps w[0], and calls next() exactly once
+    if (calls != 1) return 14;
+    if (w[0] != 101) return 15;
+    if (w[1] != 200) return 16;
+
+    // As a statement in a for update, which is where it earns its keep.
+    word sum = 0;
+    for (word i = 0; i < 5; i++) sum = sum + i;
+    if (sum != 10) return 17;
+
+    // Inside a struct.
+    return 0;
+}

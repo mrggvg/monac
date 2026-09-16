@@ -1,0 +1,16 @@
+// expect: A=25
+// Count the primes below 100. There are 25.
+word main() {
+    word count = 0;
+    for (word n = 2; n < 100; n += 1) {
+        word prime = 1;
+        for (word d = 2; d * d <= n; d += 1) {
+            if (n % d == 0) {
+                prime = 0;
+                break;
+            }
+        }
+        count += prime;
+    }
+    return count;
+}

@@ -1,0 +1,5 @@
+// expect: A=3
+// DIV is single-operand with an implicit A accumulator, and unsigned.
+word main() {
+    return 17 / 5;
+}

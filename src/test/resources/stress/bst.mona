@@ -1,0 +1,202 @@
+// expect: A=0
+//
+// A binary search tree that inserts, deletes and puts every node back, checking
+// itself as it goes. It is here to lean on the allocator: a tree of this shape is
+// nothing but allocate, link, unlink, free, and it does that thousands of times.
+//
+// It leans on the compiler too. Insert and delete are written with the
+// pointer-to-the-link idiom — `link` points at the field that has to change, so the
+// root needs no special case — and `&(*link)->left` was returning zero until
+// recently, which built the whole tree on top of address zero.
+//
+// Everything is iterative. Recursion would be the natural way to write a tree, and
+// the stack reserve for a recursive program is 256 bytes, which is heap this wants.
+
+struct Node {
+    word key;
+    struct Node* left;
+    struct Node* right;
+};
+
+struct Node* root = 0;
+word live = 0;                  // nodes the tree is holding right now
+word rng = 12345;
+
+// The stack for an iterative in-order walk. 32 is far more than the depth a tree of
+// a few hundred random keys reaches.
+struct Node* stack[32];
+
+// A 16-bit linear congruential generator, so the run varies but repeats exactly.
+word nextRandom() {
+    rng = rng * 25173 + 13849;
+    return rng;
+}
+
+// ---------------------------------------------------------------- the tree
+
+// Returns 1 if a node was added, 0 if the key was already there, and 2 if the heap
+// said no — which is a legitimate answer, not a failure.
+word insert(word key) {
+    struct Node** link = &root;
+    while (*link != 0) {
+        word here = (*link)->key;
+        if (key == here) return 0;
+        if (key < here) {
+            link = &(*link)->left;
+        } else {
+            link = &(*link)->right;
+        }
+    }
+
+    struct Node* fresh = __alloc(sizeof(struct Node));
+    if (fresh == 0) return 2;
+    fresh->key = key;
+    fresh->left = 0;
+    fresh->right = 0;
+    *link = fresh;
+    live = live + 1;
+    return 1;
+}
+
+// Returns 1 if the key was found and removed, 0 if it was not there.
+word remove(word key) {
+    struct Node** link = &root;
+    while (*link != 0) {
+        word here = (*link)->key;
+        if (key == here) {
+            struct Node* victim = *link;
+
+            if (victim->left == 0) {
+                *link = victim->right;
+            } else {
+                if (victim->right == 0) {
+                    *link = victim->left;
+                } else {
+                    // Two children: take the successor's key and unlink the
+                    // successor instead. The successor is the leftmost node of the
+                    // right subtree, and by construction it has no left child.
+                    struct Node** slot = &victim->right;
+                    while ((*slot)->left != 0) {
+                        slot = &(*slot)->left;
+                    }
+                    struct Node* successor = *slot;
+                    victim->key = successor->key;
+                    *slot = successor->right;
+                    victim = successor;
+                }
+            }
+
+            __free(victim);
+            live = live - 1;
+            return 1;
+        }
+        if (key < here) {
+            link = &(*link)->left;
+        } else {
+            link = &(*link)->right;
+        }
+    }
+    return 0;
+}
+
+// ---------------------------------------------------------------- checking
+
+// Walks the tree in order and returns 0 if it is a valid search tree holding exactly
+// `live` nodes. Any other value names what went wrong.
+word check() {
+    word depth = 0;
+    word seen = 0;
+    word previous = 0;
+    word started = 0;
+    struct Node* node = root;
+
+    while (node != 0 || depth > 0) {
+        while (node != 0) {
+            if (depth >= 32) return 11;         // deeper than the walk can hold
+            stack[depth] = node;
+            depth = depth + 1;
+            node = node->left;
+        }
+        depth = depth - 1;
+        node = stack[depth];
+
+        if (started == 1) {
+            if (node->key <= previous) return 12;   // out of order, so not a BST
+        }
+        previous = node->key;
+        started = 1;
+        seen = seen + 1;
+
+        node = node->right;
+    }
+
+    if (seen != live) return 13;                // the tree lost or gained a node
+    return 0;
+}
+
+// ---------------------------------------------------------------- the workload
+
+word main() {
+    word first = 0;                 // what the heap held before any of it was reused
+    word rounds = 0;
+    while (rounds < 12) {
+        // Fill: insert until the heap refuses, so every round runs the allocator to
+        // exhaustion rather than to a number chosen here.
+        word full = 0;
+        word inserted = 0;
+        while (full == 0) {
+            word key = nextRandom() & 1023;
+            word outcome = insert(key);
+            if (outcome == 2) {
+                full = 1;
+            } else {
+                inserted = inserted + outcome;
+            }
+        }
+        if (inserted == 0) return 1;            // the heap gave us nothing at all
+        if (rounds == 0) first = inserted;
+
+        word bad = check();
+        if (bad != 0) return 100 + bad;
+
+        // Drain about half, by key, so the deletions hit all three cases: no child,
+        // one child, and the two-child splice.
+        word removals = 0;
+        word attempt = 0;
+        while (attempt < 400) {
+            word key = nextRandom() & 1023;
+            removals = removals + remove(key);
+            attempt = attempt + 1;
+        }
+
+        bad = check();
+        if (bad != 0) return 200 + bad;
+
+        // And empty it. Deleting the root over and over exercises the splice case
+        // hardest, because the root of a full tree always has two children.
+        while (root != 0) {
+            if (remove(root->key) != 1) return 2;
+        }
+        if (live != 0) return 3;
+
+        bad = check();
+        if (bad != 0) return 300 + bad;
+
+        rounds = rounds + 1;
+    }
+
+    // Everything was freed, so the heap has to be able to hand it all back. Comparing
+    // against the first fill rather than against a number written here is what makes
+    // this a leak check: an allocator that lost a few units per round would still
+    // satisfy any fixed floor, and would not satisfy this.
+    word refill = 0;
+    word outcome = insert(nextRandom() & 1023);
+    while (outcome != 2) {
+        refill = refill + outcome;              // 1 for a new key, 0 for a repeat
+        if (refill > 2000) return 4;            // insert stopped saying no
+        outcome = insert(nextRandom() & 1023);
+    }
+    if (refill + 8 < first) return 5;           // the heap came back smaller
+
+    return 0;
+}

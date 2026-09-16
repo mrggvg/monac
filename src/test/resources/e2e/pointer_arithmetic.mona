@@ -1,0 +1,11 @@
+// expect: A=30
+// Pointer arithmetic counts in elements, so p + 2 advances four bytes for a word*.
+word main() {
+    word a[3];
+    a[0] = 10;
+    a[1] = 20;
+    a[2] = 30;
+    word* p = a;
+    p = p + 2;
+    return *p;
+}

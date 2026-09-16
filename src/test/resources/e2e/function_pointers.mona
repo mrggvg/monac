@@ -1,0 +1,50 @@
+// expect: A=0
+//
+// Function pointers. Returns 0 when every claim holds, otherwise the failing check.
+
+word add(word a, word b) { return a + b; }
+word sub(word a, word b) { return a - b; }
+word mul(word a, word b) { return a * b; }
+word twice(word x) { return x * 2; }
+
+word (*ops[3])(word, word) = {add, sub, mul};   // a dispatch table, in the image
+
+word counter = 0;
+void tick(void) { counter++; }
+
+struct Button { word id; void (*press)(void); };
+
+word apply(word (*f)(word, word), word a, word b) { return f(a, b); }
+word map(word (*f)(word), word x) { return (*f)(x); }
+
+word fact(word n);
+word (*recurse)(word) = fact;                   // recursion through a pointer
+word fact(word n) { return n <= 1 ? 1 : n * recurse(n - 1); }
+
+word main() {
+    if (ops[0](7, 5) != 12 || ops[1](7, 5) != 2 || ops[2](7, 5) != 35) return 1;
+
+    word (*op)(word, word) = add;               // a function's name is its address
+    if (op(1, 2) != 3) return 2;
+    op = &sub;                                  // and so is &name
+    if (op(9, 4) != 5) return 3;
+
+    if (apply(mul, 6, 7) != 42) return 4;
+    if (map(twice, 21) != 42) return 5;
+
+    struct Button b = {1, tick};
+    b.press();
+    b.press();
+    if (counter != 2) return 6;
+
+    void (*nothing)(void) = 0;
+    if (nothing != 0) return 7;
+    if (op == add || op != sub) return 8;
+
+    if (fact(6) != 720) return 9;
+
+    word i = 2;
+    if ((*ops[i])(3, 3) != 9) return 10;
+    if (sizeof(op) != 2 || sizeof(ops) != 6) return 11;
+    return 0;
+}

@@ -1,0 +1,43 @@
+// expect: A=0
+//
+// Arrays of arrays. Returns 0 when every claim holds, otherwise the failing check.
+
+word grid[3][4];
+byte board[2][3] = {{1, 2, 3}, {4, 5, 6}};
+word identity[3][3] = {{1}, {0, 1}, {0, 0, 1}};
+word flat[2][2] = {1, 2, 3, 4};
+
+struct Tile { byte cells[2][2]; };
+
+word trace(word m[][3], word n) {
+    word sum = 0;
+    for (word i = 0; i < n; i++) sum += m[i][i];
+    return sum;
+}
+
+word main() {
+    if (sizeof(grid) != 24 || sizeof(grid[0]) != 8 || sizeof(grid[0][0]) != 2) return 1;
+    for (word r = 0; r < 3; r++) {
+        for (word c = 0; c < 4; c++) grid[r][c] = r * 10 + c;
+    }
+    if (grid[2][3] != 23 || grid[1][0] != 10) return 2;
+    word* row = grid[1];                    // a row decays to a pointer to its first word
+    if (row[2] != 12) return 3;
+    if (board[1][2] != 6 || board[0][1] != 2) return 4;
+    if (trace(identity, 3) != 3) return 5;
+    if (flat[1][0] != 3) return 6;
+
+    struct Tile t;
+    t.cells[1][0] = 9;
+    if (t.cells[1][0] != 9 || sizeof(t) != 4) return 7;
+
+    word cube[2][2][2];
+    cube[1][1][1] = 5;
+    cube[1][0][1] = 3;
+    if (cube[1][1][1] + cube[1][0][1] != 8) return 8;
+    if (sizeof(cube[1]) != 8) return 9;
+
+    word local[2][3] = {{1, 2, 3}, {4, 5, 6}};
+    if (local[1][1] != 5 || trace(local, 2) != 6) return 10;
+    return 0;
+}

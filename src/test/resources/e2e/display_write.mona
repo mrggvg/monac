@@ -1,0 +1,10 @@
+// expect: A=3
+// display: ABC
+// Writing bytes straight into the memory-mapped text display at 0x1000.
+word main() {
+    byte* screen = 4096;
+    screen[0] = 'A';
+    screen[1] = 'B';
+    screen[2] = 'C';
+    return 3;
+}

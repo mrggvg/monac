@@ -1,0 +1,9 @@
+// expect: A=65535
+// An sbyte parameter sign-extends: 255 as a signed byte is -1.
+sword take(sbyte b) {
+    return b;
+}
+
+sword main() {
+    return take(255);
+}

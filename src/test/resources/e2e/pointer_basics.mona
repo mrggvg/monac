@@ -1,0 +1,7 @@
+// expect: A=42
+word main() {
+    word x = 10;
+    word* p = &x;
+    *p = 42;
+    return x;
+}

@@ -1,0 +1,20 @@
+// expect: A=54321
+// Reverse an array in place, then read it back as decimal digits.
+word main() {
+    word a[5];
+    for (word i = 0; i < 5; i += 1) a[i] = i + 1;
+
+    word lo = 0;
+    word hi = 4;
+    while (lo < hi) {
+        word t = a[lo];
+        a[lo] = a[hi];
+        a[hi] = t;
+        lo += 1;
+        hi -= 1;
+    }
+
+    word n = 0;
+    for (word k = 0; k < 5; k += 1) n = n * 10 + a[k];
+    return n;
+}

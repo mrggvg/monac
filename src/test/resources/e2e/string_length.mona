@@ -1,0 +1,10 @@
+// expect: A=13
+word length(byte* s) {
+    word n = 0;
+    while (s[n] != 0) n += 1;
+    return n;
+}
+
+word main() {
+    return length("Hello, world!");
+}

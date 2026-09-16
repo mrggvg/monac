@@ -1,0 +1,16 @@
+// expect: A=332
+// Regression: byte parameters were silently always zero.
+//
+// Arguments are pushed as full 16-bit words, and words on this machine are
+// big-endian. Loading a byte parameter with MOVB at the slot address therefore
+// fetched the HIGH byte, which is always 0 for a value below 256. Narrowing now
+// happens at the call site, while the value is still in a register.
+//
+// 77 + 255 = 332
+word take(byte a, byte b) {
+    return a + b;
+}
+
+word main() {
+    return take('M', 255);
+}

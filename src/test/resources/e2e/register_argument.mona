@@ -1,0 +1,29 @@
+// expect: A=216
+// The first argument travels in B rather than on the stack. Taking its address is
+// the case that cannot: a register has none, so the callee writes it to a frame
+// slot first — but only in a function that asks.
+void bump(word* p) {
+    *p = *p + 100;
+}
+
+word takesAddress(word a, word b) {
+    bump(&a);                 // &a forces the register argument into memory
+    word* q = &a;
+    *q = *q + b;
+    return a;                 // 1 + 100 + 20
+}
+
+word swap(word* x, word* y) {
+    word t = *x;
+    *x = *y;
+    *y = t;
+    return 0;
+}
+
+word main() {
+    word r = takesAddress(1, 20);
+    word m = 5;
+    word n = 9;
+    swap(&m, &n);             // m = 9, n = 5
+    return r + m * 10 + n;    // 121 + 90 + 5
+}

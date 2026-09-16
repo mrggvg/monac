@@ -1,0 +1,179 @@
+// expect: A=0
+//
+// Part three of the executable half of docs/reference/language.md: statements, and how functions
+// are declared and called. Returns 0 when every claim holds, otherwise the check that
+// failed.
+
+word checkIf() {
+    word r = 0;
+    if (1) r = 1;
+    if (0) r = 2;
+    if (r != 1) return 1;
+
+    if (0) { r = 2; } else { r = 3; }
+    if (r != 3) return 2;
+
+    // else if is just an else whose statement is another if
+    word n = 7;
+    if (n < 5) { r = 1; } else if (n < 10) { r = 2; } else { r = 3; }
+    if (r != 2) return 3;
+    return 0;
+}
+
+word checkLoops() {
+    word counter = 0;
+    while (counter < 3) counter += 1;            // a single statement needs no braces
+    if (counter != 3) return 4;
+
+    word sum = 0;
+    for (word i = 0; i < 5; i += 1) {
+        if (i == 1) continue;
+        if (i == 4) break;
+        sum += i;
+    }
+    if (sum != 5) return 5;                      // 0 + 2 + 3
+
+    word already = 0;
+    for (; already < 2; already += 1) { }        // an empty initializer is allowed
+    if (already != 2) return 6;
+
+    word forever = 0;
+    for (word i = 0; ; i += 1) {                 // and an empty condition means true
+        forever += 1;
+        if (forever == 4) break;
+    }
+    if (forever != 4) return 7;
+
+    word nested = 0;
+    for (word i = 0; i < 3; i += 1) {
+        for (word j = 0; j < 3; j += 1) {
+            if (j == 2) break;                   // breaks the inner loop only
+            nested += 1;
+        }
+    }
+    if (nested != 6) return 8;
+
+    word which = 0;
+    while (1) {                                  // while (1) is the idiom for endless
+        which += 1;
+        if (which > 2) break;
+    }
+    if (which != 3) return 9;
+    return 0;
+}
+
+word checkSwitch() {
+    word hits = 0;
+    switch (2) {
+        case 1: hits += 1;
+        case 2: hits += 10;
+        case 3: hits += 100;
+                break;
+        default: hits += 1000;
+    }
+    if (hits != 110) return 10;                  // fell from 2 into 3, then broke
+
+    hits = 0;
+    switch (9) {
+        case 1: hits += 1; break;
+        default: hits = 7;
+    }
+    if (hits != 7) return 11;
+
+    hits = 0;
+    switch (5) {
+        case 5: hits = 1; break;
+    }
+    if (hits != 1) return 12;                    // a switch needs no default
+
+    hits = 0;
+    switch (99) {
+        case 1: hits = 1; break;
+    }
+    if (hits != 0) return 13;                    // and matches nothing quietly
+    return 0;
+}
+
+// A block is a statement, and a declaration inside one is scoped to it.
+word checkBlocks() {
+    word outer = 1;
+    {
+        word inner = 2;
+        outer += inner;
+    }
+    if (outer != 3) return 14;
+    return 0;
+}
+
+// ---------------------------------------------------------------- functions
+
+void returnsNothing(word* into) {
+    *into = 5;
+    return;                                      // a bare return is allowed in void
+}
+
+word noArguments() {
+    return 11;
+}
+
+word fourArguments(word a, word b, word c, word d) {
+    return a + b + c + d;
+}
+
+word checkFunctions() {
+    if (twice(21) != 42) return 15;
+    if (definedLater(6) != 36) return 16;        // order in the file does not matter
+    if (noArguments() != 11) return 17;
+    if (fourArguments(1, 2, 3, 4) != 10) return 18;
+
+    word got = 0;
+    returnsNothing(&got);
+    if (got != 5) return 19;
+
+    if (&twice == 0) return 20;                  // a function's address is a word
+    return 0;
+}
+
+// Recursion works, and the compiler emits a run-time stack check for it because a
+// recursive call graph has no depth it can compute.
+word factorial(word n) {
+    if (n <= 1) return 1;
+    return n * factorial(n - 1);
+}
+
+word checkRecursion() {
+    if (factorial(5) != 120) return 21;
+    if (evenly(8) != 1) return 22;               // mutual recursion too
+    return 0;
+}
+
+
+word evenly(word n) {
+    if (n == 0) return 1;
+    return oddly(n - 1);
+}
+
+word oddly(word n) {
+    if (n == 0) return 0;
+    return evenly(n - 1);
+}
+
+word twice(word n) {
+    return n + n;
+}
+
+// Defined after its callers: every top-level name is in scope throughout the file, so
+// there are no forward declarations and none are needed.
+word definedLater(word n) {
+    return n * n;
+}
+
+word main() {
+    word bad = checkIf();            if (bad != 0) return bad;
+    bad = checkLoops();              if (bad != 0) return bad;
+    bad = checkSwitch();             if (bad != 0) return bad;
+    bad = checkBlocks();             if (bad != 0) return bad;
+    bad = checkFunctions();          if (bad != 0) return bad;
+    bad = checkRecursion();          if (bad != 0) return bad;
+    return 0;
+}

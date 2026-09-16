@@ -1,0 +1,106 @@
+// expect: A=0
+//
+// Two places where the machine does not do what the instruction name suggests, both
+// found by reading the simulator rather than by anything failing.
+//
+// 1. NOT is broken at the top of the range. The simulator computes JavaScript's
+//    ~operand and wraps a negative result with 65536 - ((-value) % 65536); for 0xFFFF
+//    that gives 65536, and registers are not masked on assignment, so the next store
+//    fails with "Invalid data value 65536". The compiler emits XOR reg, 0xFFFF for the
+//    ~ operator instead -- one instruction either way.
+//
+// 2. String literals reach the image through the assembler's DB, whose six named
+//    escapes run without a global flag, and which has no case for a backslash at all.
+//    Anything unprintable is now written as \xNN, the one escape it decodes globally.
+//    Before that, the second \n in a string came out as two literal bytes.
+
+word notOfEveryValue() {
+    // Walk the whole 16-bit range in strides that hit both ends and the boundaries.
+    word x = 0;
+    word steps = 0;
+    while (steps < 400) {
+        word n = ~x;
+        if ((n & x) != 0) return 1;             // no bit may survive in both
+        if ((n | x) != 65535) return 2;         // and together they must be all ones
+        if (~n != x) return 3;                  // and it must be its own inverse
+        x = x + 163;                            // coprime with 65536, so it wanders
+        steps = steps + 1;
+    }
+    return 0;
+}
+
+// Built in a loop so nothing can fold it: a constant 0xFFFF is complemented at compile
+// time and never reaches the instruction at all.
+//
+// Note that this whole file only catches the broken NOT at -O0, and that is not a
+// weakness in the test. At -O1 the result stays in a register and is never stored, and
+// the one comparison it feeds wraps 65536 back to 0 inside the ALU -- so the bad value
+// is real but invisible. It is exactly the sort of latent fault that appears the first
+// time a scheduling change spills it, which is the argument for fixing it rather than
+// noting that -O1 happens to survive.
+word notOfARuntimeAllOnes() {
+    word all = 0;
+    for (word i = 0; i < 16; i += 1) {
+        all = (all << 1) | 1;
+    }
+    if (all != 65535) return 50;
+    word n = ~all;
+    if (n != 0) return 51;
+    word held = n;                              // and store it, which is what faulted
+    if (held != 0) return 52;
+    word roundTrip = ~held;
+    if (roundTrip != 65535) return 53;
+    return 0;
+}
+
+word notAtTheBoundaries() {
+    word all = 65535;
+    word none = 0;
+    word top = 32768;
+    if (~all != 0) return 10;                   // the value that used to fault
+    if (~none != 65535) return 11;
+    if (~top != 32767) return 12;
+    // Store it, which is where the out-of-range value used to be rejected.
+    word held = ~all;
+    if (held != 0) return 13;
+    return 0;
+}
+
+word repeatedEscapes() {
+    byte* s = "a\nb\nc\td\te\\f\\g";
+    if (s[0] != 97) return 20;
+    if (s[1] != 10) return 21;
+    if (s[2] != 98) return 22;
+    if (s[3] != 10) return 23;                  // the SECOND newline
+    if (s[4] != 99) return 24;
+    if (s[5] != 9) return 25;
+    if (s[6] != 100) return 26;
+    if (s[7] != 9) return 27;                   // the second tab
+    if (s[8] != 101) return 28;
+    if (s[9] != 92) return 29;                  // a backslash, which had no escape
+    if (s[10] != 102) return 30;
+    if (s[11] != 92) return 31;                 // and a second one
+    if (s[12] != 103) return 32;
+    if (s[13] != 0) return 33;
+    return 0;
+}
+
+word quotesAndHighBytes() {
+    byte* s = "\"\x00\xFF\x80\x7F\"";
+    if (s[0] != 34) return 40;                  // a quote inside the string
+    if (s[1] != 0) return 41;                   // an embedded NUL
+    if (s[2] != 255) return 42;
+    if (s[3] != 128) return 43;
+    if (s[4] != 127) return 44;
+    if (s[5] != 34) return 45;
+    return 0;
+}
+
+word main() {
+    word bad = notOfEveryValue();    if (bad != 0) return bad;
+    bad = notAtTheBoundaries();      if (bad != 0) return bad;
+    bad = notOfARuntimeAllOnes();    if (bad != 0) return bad;
+    bad = repeatedEscapes();         if (bad != 0) return bad;
+    bad = quotesAndHighBytes();      if (bad != 0) return bad;
+    return 0;
+}

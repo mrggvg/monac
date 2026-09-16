@@ -1,0 +1,7 @@
+// expect: A=100
+word main() {
+    word x = 7;
+    word r = 0;
+    if (x > 5) { r = 100; } else { r = 200; }
+    return r;
+}

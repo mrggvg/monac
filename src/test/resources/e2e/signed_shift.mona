@@ -1,0 +1,7 @@
+// expect: A=65531
+// Arithmetic right shift: -20 >> 2 = -5. SHR is logical only, so the vacated
+// high bits have to be filled with the sign by hand.
+sword main() {
+    sword a = 0 - 20;
+    return a >> 2;
+}

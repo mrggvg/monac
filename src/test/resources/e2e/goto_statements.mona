@@ -1,0 +1,41 @@
+// expect: A=0
+//
+// goto. Returns 0 when every claim holds, otherwise the failing check.
+
+word main() {
+    // Out of two loops in one step: the case goto is kept for.
+    word found = 0;
+    for (word i = 0; i < 10; i++) {
+        for (word j = 0; j < 10; j++) {
+            if (i * j == 42) {
+                found = i * 100 + j;
+                goto done;
+            }
+        }
+    }
+done:
+    if (found != 607) return 1;
+
+    // Backward, it is a loop.
+    word n = 0;
+again:
+    n++;
+    if (n < 5) goto again;
+    if (n != 5) return 2;
+
+    // Forward, it skips code that only the jump could have avoided.
+    word skipped = 1;
+    goto past;
+    skipped = 99;
+past:
+    if (skipped != 1) return 3;
+
+    // A label at the end of a block labels an empty statement.
+    {
+        goto end;
+        return 4;
+    end:
+        ;
+    }
+    return 0;
+}

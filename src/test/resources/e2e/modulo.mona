@@ -1,0 +1,7 @@
+// expect: A=2
+// There is no MOD instruction: this lowers to a - (a / b) * b.
+word main() {
+    word a = 17;
+    word b = 5;
+    return a % b;
+}

@@ -1,0 +1,30 @@
+// The graphics card lives on I/O ports, not in memory: 7 selects the mode, 8 latches
+// a VRAM address, 9 reads or writes the word there. VRAM is its own 64 KB space — no
+// pointer can reach it, which is why __in and __out exist.
+//
+// Tile memory starts at VRAM 0x0000: 128 x 128 tiles, two bytes each, high byte the
+// character, low byte the colour index. VIDADDR is a BYTE address, so the tile at
+// column x, row y is at (y * 128 + x) * 2 — and the next tile along is two further.
+//
+// Everything this program writes is known before it runs: which tile, which
+// character, which colour. The ports are an enum, so they are constants, and the
+// compiler folds every address and value too, which makes each __out two
+// instructions — MOV A, value and OUT port. That is as small and as fast as this can
+// be written. A loop over the string would pay to load, multiply and count each
+// character, and a helper called four times would pay for four calls: both versions
+// have been here, at 40 and 46 instructions against 25, and 109 and 84 instructions
+// executed against 24.
+
+enum Port { VIDMODE = 7, VIDADDR = 8, VIDDATA = 9 };
+enum { MODE_TEXT = 1, WHITE = 15 };
+
+word main() {
+    __out(VIDMODE, MODE_TEXT);
+
+    __out(VIDADDR, 0);  __out(VIDDATA, 'M' * 256 + WHITE);
+    __out(VIDADDR, 2);  __out(VIDDATA, 'O' * 256 + WHITE);
+    __out(VIDADDR, 4);  __out(VIDDATA, 'N' * 256 + WHITE);
+    __out(VIDADDR, 6);  __out(VIDDATA, 'A' * 256 + WHITE);
+
+    return 4;                   // tiles written
+}

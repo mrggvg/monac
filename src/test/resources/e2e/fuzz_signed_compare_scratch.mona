@@ -1,0 +1,17 @@
+// expect: A=0
+//
+// Found by the program fuzzer (seed 20360972): a signed comparison biased its right
+// side in B unconditionally, destroying v5, which the allocator had put there and the
+// divisor still needed. The quotient came back as 1 % 32769 instead of 1 % 1.
+
+word g0;
+sword g1;
+
+word f4(word p2, word p3) {
+    return 0;
+}
+
+word main() {
+    word v5 = (f4(4135, g0) & g0);
+    return ((g1 < 1) % (v5 | 1));
+}

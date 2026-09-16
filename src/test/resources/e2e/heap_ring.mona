@@ -1,0 +1,100 @@
+// expect: A=0
+// maxSteps: 400000
+//
+// A ring buffer in a struct, over a heap block: the shape snake.mona uses for the
+// snake's body, tested on its own where the answers are known.
+//
+// The parts that can go wrong quietly are the wrap and the saturation. A ring whose
+// indices wrap incorrectly still works for the first `capacity` operations and only
+// then starts returning the wrong element, so a test that pushes a dozen things and
+// pops them proves nothing. These push and pop thousands of times through a ring of
+// seven, and check the value every time.
+
+struct Ring {
+    word* cells;                // the heap block
+    word capacity;
+    word head;                  // index of the newest
+    word tail;                  // index of the oldest
+    word length;
+};
+
+struct Ring ring;
+
+word nextIndex(word i) {
+    i += 1;
+    if (i == ring.capacity) return 0;
+    return i;
+}
+
+word openRing(word capacity) {
+    ring.cells = __alloc(capacity * sizeof(word));
+    if (ring.cells == 0) return 0;
+    ring.capacity = capacity;
+    // head is the index of the NEWEST element, so an empty ring has to have it one
+    // slot BEHIND the tail -- then the first push advances onto the tail's slot.
+    // Starting both at zero looks right and is not: after one push and one pop the
+    // tail has moved and the head has not, and the next push overwrites the wrong
+    // slot. That only shows once the ring has been emptied, which is why it is worth
+    // testing here rather than only in a program that never empties it.
+    ring.head = capacity - 1;
+    ring.tail = 0;
+    ring.length = 0;
+    return 1;
+}
+
+void push(word value) {
+    ring.head = nextIndex(ring.head);
+    ring.cells[ring.head] = value;
+    ring.length += 1;
+}
+
+word pop() {
+    word value = ring.cells[ring.tail];
+    ring.tail = nextIndex(ring.tail);
+    ring.length -= 1;
+    return value;
+}
+
+word main() {
+    if (openRing(7) == 0) return 1;
+    if (sizeof(struct Ring) != 10) return 2;    // packed: five words, no padding
+
+    // A queue of one, over and over: this alone walks both indices right round the
+    // ring many times, and every wrap has to line up.
+    for (word i = 0; i < 500; i += 1) {
+        push(i);
+        if (ring.length != 1) return 3;
+        if (pop() != i) return 4;
+        if (ring.length != 0) return 5;
+    }
+
+    // Fill it to capacity, then hold it there: one on, one off, for long enough that
+    // head and tail have each wrapped hundreds of times while staying six apart.
+    for (word i = 0; i < 7; i += 1) push(i + 1000);
+    if (ring.length != 7) return 6;
+    for (word i = 0; i < 700; i += 1) {
+        word expected = 1000 + i;               // the oldest still in the ring
+        if (pop() != expected) return 7;
+        push(1007 + i);
+        if (ring.length != 7) return 8;
+    }
+    // Drain it and check the order survived.
+    for (word i = 0; i < 7; i += 1) {
+        if (pop() != 1700 + i) return 9;
+    }
+    if (ring.length != 0) return 10;
+
+    // The block really is on the heap, and it really is ours: writing through the
+    // pointer must not disturb the struct that holds it.
+    ring.cells[0] = 4242;
+    if (ring.capacity != 7) return 11;
+    if (ring.cells[0] != 4242) return 12;
+
+    // A second ring, so the allocator hands out two distinct blocks.
+    word* other = __alloc(7 * sizeof(word));
+    if (other == 0) return 13;
+    other[0] = 99;
+    if (ring.cells[0] != 4242) return 14;       // the first block is untouched
+    if (other == ring.cells) return 15;
+    return 0;
+}

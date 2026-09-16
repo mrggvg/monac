@@ -1,0 +1,50 @@
+// expect: A=42
+// The reason structs exist here: a linked list on the heap. sizeof is what keeps
+// the allocation and the layout in step — __alloc(4) would be right until somebody
+// adds a member, and then wrong in a way that corrupts the next block rather than
+// failing to compile.
+struct Node {
+    word value;
+    struct Node* next;
+};
+
+struct Node* head = 0;
+
+// Push onto the front. Returns 0 if the heap is full.
+word push(word value) {
+    struct Node* node = __alloc(sizeof(struct Node));
+    if (node == 0) return 0;
+    node->value = value;
+    node->next = head;
+    head = node;
+    return 1;
+}
+
+word sum() {
+    word total = 0;
+    struct Node* walk = head;
+    while (walk != 0) {
+        total = total + walk->value;
+        walk = walk->next;
+    }
+    return total;
+}
+
+word main() {
+    word i = 1;
+    while (i <= 5) {
+        push(i * 2);          // 2 4 6 8 10
+        i = i + 1;
+    }
+    word first = sum();       // pushed on the front, so 10 8 6 4 2, summing to 30
+
+    // Free the front two and count again.
+    struct Node* dead = head;
+    head = head->next;
+    __free(dead);
+    dead = head;
+    head = head->next;
+    __free(dead);
+
+    return first + sum();     // 30 + (6 + 4 + 2) = 42
+}

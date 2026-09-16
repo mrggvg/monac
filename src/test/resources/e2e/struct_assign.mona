@@ -1,0 +1,29 @@
+// expect: A=2206
+// Whole-struct assignment is a word-by-word copy, unrolled: there is no memcpy to
+// call and nothing on this machine moves more than a word at a time. Copies must
+// be independent afterwards, which is what this checks.
+struct Triple {
+    word a;
+    word b;
+    word c;
+};
+
+struct Triple stored;
+
+word main() {
+    struct Triple first;
+    first.a = 1;
+    first.b = 2;
+    first.c = 3;
+
+    struct Triple second;
+    second = first;
+    second.a = 1000;          // must not disturb `first`
+
+    stored = second;          // a global as the destination
+    stored.b = 200;
+
+    // first: 1 2 3   second: 1000 2 3   stored: 1000 200 3
+    return first.a + second.a + stored.a + stored.b + first.b + first.c;
+    //     1      + 1000      + 1000     + 200      + 2       + 3       = 2206
+}

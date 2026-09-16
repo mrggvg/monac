@@ -1,0 +1,16 @@
+// expect: A=10
+// display: HELLO MONA
+//
+// The v1.0 target program: loop, decompose, and write characters to the
+// memory-mapped text display at 0x1000. Needs pointers, subscripting, byte
+// load/store, and a string literal in read-only data.
+word main() {
+    byte* screen = 4096;
+    byte* msg = "HELLO MONA";
+    word i = 0;
+    while (msg[i] != 0) {
+        screen[i] = msg[i];
+        i = i + 1;
+    }
+    return i;
+}

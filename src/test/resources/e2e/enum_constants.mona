@@ -1,0 +1,59 @@
+// expect: A=0
+//
+// enum. Returns 0 when every claim holds, otherwise the failing check.
+
+enum Color { RED, GREEN, BLUE };
+enum { FIRST = 10, SECOND, THIRD = FIRST * 3, FOURTH, };    // a trailing comma
+enum Size { SMALL = sizeof(word), LARGE = sizeof(word) * 8 };
+enum Wrap { MINUS_ONE = -1, AFTER_IT };
+
+struct Palette {
+    byte shades[BLUE + 1];          // a member's length from a constant
+    word count;
+};
+
+word lengths[LARGE];
+
+word letter(enum Color c) {
+    switch (c) {
+        case RED: return 'r';
+        case GREEN: return 'g';
+        case BLUE: return 'b';
+    }
+    return '?';
+}
+
+word main() {
+    if (RED != 0 || GREEN != 1 || BLUE != 2) return 1;
+    if (SECOND != 11 || THIRD != 30 || FOURTH != 31) return 2;
+    if (SMALL != 2 || LARGE != 16) return 3;
+    if (MINUS_ONE != 65535 || AFTER_IT != 0) return 4;
+    if (letter(GREEN) != 'g' || letter(BLUE) != 'b') return 5;
+    if (sizeof(lengths) != 32) return 6;
+    struct Palette p;
+    if (sizeof(p) != 5) return 7;
+
+    enum Color c = BLUE;
+    c = c - 1;
+    if (c != GREEN) return 8;
+
+    // Declared inside a block, and visible only there.
+    {
+        enum { LOCAL = 7 };
+        word a[LOCAL];
+        if (sizeof(a) != 14) return 9;
+    }
+
+    // Dense enough for a jump table.
+    word hits = 0;
+    for (word i = RED; i <= BLUE + 1; i++) {
+        switch (i) {
+            case RED: hits += 1; break;
+            case GREEN: hits += 10; break;
+            case BLUE: hits += 100; break;
+            case BLUE + 1: hits += 1000; break;
+        }
+    }
+    if (hits != 1111) return 10;
+    return 0;
+}

@@ -1,0 +1,66 @@
+// A linked list built on the heap.
+//
+// The one example that allocates, on purpose. Every other program here keeps its data
+// in fixed arrays, which on a 4 KB machine is usually the better choice: the compiler
+// knows the memory before the program runs, and nothing can fail at run time. The
+// heap earns its keep only when a program cannot know how much it will need — see
+// tree.mona for the same kind of structure built from a pool.
+//
+// Nothing to configure: a program that calls __alloc gets a heap, sized at startup
+// as everything between the end of the image and the stack reserve. --heap <bytes>
+// caps it if you want a hard bound.
+//
+// __alloc returns 0 when the heap is full, which is worth checking on a machine
+// with four kilobytes of RAM.
+
+struct Node {
+    word value;
+    struct Node* next;
+};
+
+struct Node* head = 0;
+
+word push(word value) {
+    // sizeof, rather than the 4 this happens to be: the literal stays right only
+    // until somebody adds a member, and then it is wrong in the quiet way that
+    // overwrites the next block instead of failing to compile.
+    struct Node* node = __alloc(sizeof(struct Node));
+    if (node == 0) return 0;          // out of memory
+    node->value = value;
+    node->next = head;
+    head = node;
+    return 1;
+}
+
+word sum() {
+    word total = 0;
+    struct Node* walk = head;
+    while (walk != 0) {
+        total += walk->value;
+        walk = walk->next;
+    }
+    return total;
+}
+
+void clear() {
+    struct Node* walk = head;
+    while (walk != 0) {
+        struct Node* next = walk->next;
+        __free(walk);
+        walk = next;
+    }
+    head = 0;
+}
+
+word main() {
+    for (word i = 1; i <= 10; i++) push(i);
+
+    word total = sum();               // 1 + 2 + ... + 10 = 55
+
+    // Hand it all back, then prove the space is reusable.
+    clear();
+    push(100);
+    total += sum();                   // 55 + 100
+
+    return total;
+}

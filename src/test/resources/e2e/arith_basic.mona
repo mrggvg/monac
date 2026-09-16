@@ -1,0 +1,7 @@
+// expect: A=12
+// The declaration-and-assignment shape the old compiler was built around.
+word main() {
+    word x = 4;
+    word y = 8 + x;
+    return y;
+}

@@ -1,0 +1,345 @@
+// expect: A=0
+//
+// A red-black tree: insert with rebalancing, and a check of every invariant that
+// makes it one. It is the heaviest thing in this repository for the allocator and
+// for the code generator at once — a node is ten bytes and five fields, rotations
+// rewrite six links at a time, and almost every statement is a store through a
+// pointer into a struct member.
+//
+// The invariants are checked rather than assumed, because a rebalance that is subtly
+// wrong still produces a tree that looks fine and searches correctly:
+//
+//   1. the root is black
+//   2. no red node has a red child
+//   3. every path from the root down to a missing child passes the same number of
+//      black nodes
+//   4. it is still a search tree, and still holds the number of nodes it thinks
+//
+// Three is the one worth being careful about. Checked only where a node has *two*
+// missing children it is nearly vacuous — a tree collapsed into a spine has one such
+// node, and one number always agrees with itself — so it is checked at every missing
+// child, which is what the invariant actually says.
+//
+// Everything is iterative. The rebalance loop is the textbook one, which walks up
+// through parent pointers; the teardown rotates the tree into a spine instead of
+// recursing, so neither needs a stack the heap would have to pay for.
+
+struct Node {
+    word key;
+    word red;                   // 1 red, 0 black; a missing child counts as black
+    struct Node* left;
+    struct Node* right;
+    struct Node* parent;
+};
+
+struct Node* root = 0;
+word live = 0;
+word rng = 7;
+
+// The walk in `check` needs a stack. A red-black tree of n nodes is at most
+// 2*log2(n+1) deep, so 32 is far more than a few hundred nodes can reach — and the
+// walk says so rather than running off the end if that is ever wrong.
+struct Node* walk[32];
+word blacks[32];
+
+word nextRandom() {
+    rng = rng * 25173 + 13849;
+    return rng;
+}
+
+// ---------------------------------------------------------------- rotations
+
+// Both of these move one link up and one down, and have to mend three parent
+// pointers on the way. The root is a special case exactly once, here, which is the
+// reason for doing it in one place rather than inline at each call.
+void rotateLeft(struct Node* x) {
+    struct Node* y = x->right;
+    x->right = y->left;
+    if (y->left != 0) {
+        y->left->parent = x;
+    }
+    y->parent = x->parent;
+    if (x->parent == 0) {
+        root = y;
+    } else {
+        if (x == x->parent->left) {
+            x->parent->left = y;
+        } else {
+            x->parent->right = y;
+        }
+    }
+    y->left = x;
+    x->parent = y;
+}
+
+void rotateRight(struct Node* x) {
+    struct Node* y = x->left;
+    x->left = y->right;
+    if (y->right != 0) {
+        y->right->parent = x;
+    }
+    y->parent = x->parent;
+    if (x->parent == 0) {
+        root = y;
+    } else {
+        if (x == x->parent->right) {
+            x->parent->right = y;
+        } else {
+            x->parent->left = y;
+        }
+    }
+    y->right = x;
+    x->parent = y;
+}
+
+// ---------------------------------------------------------------- insert
+
+// Walks up from a newly inserted red node repairing the one invariant it can break:
+// a red node with a red parent.
+//
+// When the uncle is red the whole problem moves two levels up for the cost of three
+// recolourings. When it is black the tree is rotated and the loop ends. Those are the
+// only two cases, once each side is mirrored.
+void fixup(struct Node* z) {
+    while (z != root) {
+        struct Node* parent = z->parent;
+        if (parent->red == 0) return;           // nothing is broken
+
+        struct Node* grand = parent->parent;
+        if (parent == grand->left) {
+            struct Node* uncle = grand->right;
+            if (uncle != 0 && uncle->red == 1) {
+                parent->red = 0;
+                uncle->red = 0;
+                grand->red = 1;
+                z = grand;
+            } else {
+                if (z == parent->right) {
+                    z = parent;
+                    rotateLeft(z);
+                    parent = z->parent;
+                }
+                parent->red = 0;
+                grand->red = 1;
+                rotateRight(grand);
+                return;
+            }
+        } else {
+            struct Node* uncle = grand->left;
+            if (uncle != 0 && uncle->red == 1) {
+                parent->red = 0;
+                uncle->red = 0;
+                grand->red = 1;
+                z = grand;
+            } else {
+                if (z == parent->left) {
+                    z = parent;
+                    rotateRight(z);
+                    parent = z->parent;
+                }
+                parent->red = 0;
+                grand->red = 1;
+                rotateLeft(grand);
+                return;
+            }
+        }
+    }
+}
+
+// 1 inserted, 0 already present, 2 the heap is full.
+word insert(word key) {
+    struct Node* parent = 0;
+    struct Node* cursor = root;
+    while (cursor != 0) {
+        parent = cursor;
+        if (key == cursor->key) return 0;
+        if (key < cursor->key) {
+            cursor = cursor->left;
+        } else {
+            cursor = cursor->right;
+        }
+    }
+
+    struct Node* fresh = __alloc(sizeof(struct Node));
+    if (fresh == 0) return 2;
+    fresh->key = key;
+    fresh->red = 1;                             // new nodes are red, then repaired
+    fresh->left = 0;
+    fresh->right = 0;
+    fresh->parent = parent;
+
+    if (parent == 0) {
+        root = fresh;
+    } else {
+        if (key < parent->key) {
+            parent->left = fresh;
+        } else {
+            parent->right = fresh;
+        }
+    }
+    live = live + 1;
+
+    fixup(fresh);
+    root->red = 0;                              // the root is always black
+    return 1;
+}
+
+// ---------------------------------------------------------------- checking
+
+// The number of black nodes on the leftmost path. Every path has to match it, so
+// this is what the walk below compares against.
+word blackHeight() {
+    word count = 0;
+    struct Node* probe = root;
+    while (probe != 0) {
+        if (probe->red == 0) count = count + 1;
+        probe = probe->left;
+    }
+    return count;
+}
+
+// Everything that can be said about one node without leaving it: its colour against
+// its children's, its keys against theirs, and its children's parent links.
+//
+// Split out from the walk because together they need more frame slots than an
+// unoptimized build can address — the displacement in an indirect operand is a
+// signed byte, so 64 slots is the ceiling, and at -O0 every intermediate takes one.
+word checkNode(struct Node* node, word above, word expected) {
+    if (node->red == 1) {
+        if (node->left != 0 && node->left->red == 1) return 4;
+        if (node->right != 0 && node->right->red == 1) return 5;
+    }
+    // Every *missing* child is a path ending, not just the nodes that have two of
+    // them. Checking only the two-missing case lets a tree that has collapsed into a
+    // spine through: it has one such node, and one number always agrees with itself.
+    if (node->left == 0) {
+        if (above != expected) return 6;        // the black height is uneven
+    }
+    if (node->right == 0) {
+        if (above != expected) return 6;
+    }
+    if (node->left != 0) {
+        if (node->left->key >= node->key) return 7;
+        if (node->left->parent != node) return 8;
+    }
+    if (node->right != 0) {
+        if (node->right->key <= node->key) return 10;
+        if (node->right->parent != node) return 11;
+    }
+    return 0;
+}
+
+// 0 if every invariant holds. Anything else names the one that did not.
+word check() {
+    if (root == 0) {
+        if (live != 0) return 1;
+        return 0;
+    }
+    if (root->red != 0) return 2;               // the root must be black
+
+    word expected = blackHeight();
+    walk[0] = root;
+    blacks[0] = 0;
+    word top = 1;
+    word seen = 0;
+
+    while (top > 0) {
+        top = top - 1;
+        struct Node* node = walk[top];
+        word above = blacks[top];
+        if (node->red == 0) above = above + 1;
+
+        seen = seen + 1;
+        if (seen > 4000) return 3;              // the walk is not finishing
+
+        word bad = checkNode(node, above, expected);
+        if (bad != 0) return bad;
+
+        if (node->left != 0) {
+            if (top >= 32) return 9;            // deeper than a red-black tree can be
+            walk[top] = node->left;
+            blacks[top] = above;
+            top = top + 1;
+        }
+        if (node->right != 0) {
+            if (top >= 32) return 9;
+            walk[top] = node->right;
+            blacks[top] = above;
+            top = top + 1;
+        }
+    }
+
+    if (seen != live) return 12;                // nodes lost or double counted
+
+    // Belt and braces on the shape: 2*log2(n+1) is the most a red-black tree can be,
+    // so a real one's black height stays small however many nodes it holds.
+    if (live > 30 && expected > 12) return 13;
+    return 0;
+}
+
+// Frees the whole tree without a stack, by rotating the left spine up until the
+// root has no left child and can be taken off the front. Each rotation moves one
+// node closer to the top, so the whole thing costs O(n).
+void destroy() {
+    while (root != 0) {
+        if (root->left == 0) {
+            struct Node* next = root->right;
+            __free(root);
+            live = live - 1;
+            root = next;
+            if (root != 0) root->parent = 0;
+        } else {
+            rotateRight(root);
+        }
+    }
+}
+
+// ---------------------------------------------------------------- the workload
+
+word main() {
+    word first = 0;                 // what the heap held before any of it was reused
+    word rounds = 0;
+    while (rounds < 8) {
+        word inserted = 0;
+        word full = 0;
+        while (full == 0) {
+            word outcome = insert(nextRandom() & 511);
+            if (outcome == 2) {
+                full = 1;
+            } else {
+                inserted = inserted + outcome;
+            }
+            if (inserted > 3000) return 20;
+        }
+        if (inserted < 10) return 21;           // the heap gave us almost nothing
+        if (rounds == 0) first = inserted;
+
+        word bad = check();
+        if (bad != 0) return 100 + bad;
+
+        destroy();
+        if (live != 0) return 22;
+        if (root != 0) return 23;
+
+        bad = check();
+        if (bad != 0) return 200 + bad;
+
+        rounds = rounds + 1;
+    }
+
+    // Everything was freed, so the allocator has to give it all back.
+    // Against the first fill rather than a fixed floor, so a small leak per round
+    // fails rather than passes.
+    word refill = 0;
+    word outcome = insert(nextRandom() & 511);
+    while (outcome != 2) {
+        refill = refill + outcome;              // 1 for a new key, 0 for a repeat
+        if (refill > 3000) return 24;
+        outcome = insert(nextRandom() & 511);
+    }
+    if (refill + 4 < first) return 25;          // the heap came back smaller
+
+    word bad = check();
+    if (bad != 0) return 300 + bad;
+    return 0;
+}

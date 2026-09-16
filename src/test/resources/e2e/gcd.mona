@@ -1,0 +1,13 @@
+// expect: A=21
+// gcd(1071, 462) = 21. Exercises a loop-carried value, which is what the slot
+// allocator has to keep alive across the back edge.
+word main() {
+    word a = 1071;
+    word b = 462;
+    while (b != 0) {
+        word t = b;
+        b = a % b;
+        a = t;
+    }
+    return a;
+}

@@ -1,0 +1,16 @@
+// expect: A=7
+// C fall-through: case 1 runs into 2, which runs into 3, which breaks out.
+// 1 + 2 + 4 = 7.
+word f(word n) {
+    word r = 0;
+    switch (n) {
+        case 1: r = r + 1;
+        case 2: r = r + 2;
+        case 3: r = r + 4; break;
+        case 4: r = r + 8;
+        default: r = r + 100;
+    }
+    return r;
+}
+
+word main() { return f(1); }

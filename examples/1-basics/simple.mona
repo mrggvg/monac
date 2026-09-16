@@ -1,0 +1,15 @@
+// The smallest complete program: a function, a call, and a result in A.
+//
+//     monac examples/1-basics/simple.mona --dump-asm
+//
+// prints what it compiles to. `add` takes its first argument in B and its second on
+// the stack, and hands the sum back in A, which is where the simulator shows a
+// program's result when it halts. Here that is 30.
+
+word add(word a, word b) {
+    return a + b;
+}
+
+word main() {
+    return add(10, 20);
+}

@@ -1,0 +1,277 @@
+// IVONA, in lights.
+//
+// Five letters drawn as line strokes on the bitmap screen. Each letter lives for one
+// second and is then replaced — rubbed out where it stood and drawn again a little
+// higher or lower, in the next colour of a rainbow. The five clocks are staggered a
+// fifth of a second apart, so the change rolls along the word instead of the whole
+// sign blinking at once.
+//
+// THAT IS THE POINT OF THE PROGRAM. The obvious way to animate is the one cube.mona
+// uses: clear the whole screen, redraw everything, repeat. It is simple, and it is
+// why the cube manages less than a frame a second — every frame pays for every
+// pixel, whether or not that pixel moved. Here nothing is ever cleared after the
+// first instant. A letter is erased by drawing its own strokes again in colour 0,
+// which costs exactly what drawing it cost, and only the letter whose second is up
+// is touched at all. Four fifths of the sign is left alone at any moment, and left
+// alone is free.
+//
+// That works because letters cannot overlap: each sits in a box 24 wide on a
+// 46-pixel pitch, so rubbing one out can never take a pixel off its neighbour. It is
+// worth saying out loud, because it is the property the whole design leans on.
+//
+// A SECOND MEANS A REAL SECOND, which on this machine means the timer interrupt. The
+// timer counts instructions rather than time, so a second is however many
+// instructions the simulator runs in one — the speed from the Speed menu. With the
+// preload at 1000, TICKS_PER_SECOND is just the speed in kHz:
+//
+//     1 kHz  ->  1        10 kHz  ->  10        50 kHz  ->  50
+//
+// Pick 50 kHz to watch it, and set TICKS_PER_SECOND to match. A letter's second is
+// then 50,000 instructions and replacing one costs about 4,200 — erase and draw, two
+// passes over the same ninety pixels — so five letters a second use a fifth of the
+// machine and the rest is spent waiting. Ask for more than it can draw and nothing
+// breaks: the deadlines simply arrive faster than the letters can be redrawn, and
+// the roll falls behind.
+//
+// The waiting is a poll, because HLT on this machine stops for good rather than
+// idling until the next interrupt. There is nothing else to spend the time on.
+//
+// THE PALETTE is a 3-3-2 RGB cube, which is worth knowing because it means colours
+// can be computed rather than looked up:
+//
+//     index = red * 32 + green * 4 + blue        red, green 0..7   blue 0..3
+//
+// So 255 is white, 224 is red, 28 is green, 3 is blue, and 252 — red and green at
+// full, no blue — is yellow. The ramp in `colours` is eight steps around that
+// cube. It is also how you find out that the 15 cube.mona writes is not white: it is
+// azure, r0 g3 b3.
+
+// ---------------------------------------------------------------- ports
+
+// An enum, not variables, so every __in and __out takes its port as an immediate.
+enum Port {
+    IRQMASK = 0, IRQSTATUS = 1, IRQEOI = 2, TMRPRELOAD = 3,
+    VIDMODE = 7, VIDADDR = 8, VIDDATA = 9,
+};
+enum { MODE_BITMAP = 2, MODE_CLEAR = 3, IRQ_TIMER = 2 };
+
+const word TIMER_PRELOAD    = 1000;   // instructions between timer interrupts
+const word TICKS_PER_SECOND = 50;     // ...so this many of them make one second
+
+// ---------------------------------------------------------------- the word
+
+// Each letter is drawn inside a box 24 wide and 40 tall, and the five boxes sit on a
+// 46-pixel pitch starting at x = 13. The 22-pixel gap between boxes is what makes
+// erasing one letter safe.
+const word LETTERS = 5;
+const word LEFT    = 13;
+const word PITCH   = 46;
+const sword BASE   = 108;       // the y a letter bobs about
+
+// One stroke of a letter, in the letter's own 24 by 40 box, y downwards. Four bytes,
+// since nothing in a box needs more than one.
+struct Stroke {
+    byte x0;
+    byte y0;
+    byte x1;
+    byte y1;
+};
+
+// Nineteen strokes, letter by letter: I is 3, V is 2, O is 8, N is 3, A is 3. An
+// initializer list on a global is data in the image, so the whole word costs 76 bytes
+// and no code at all to set up.
+const struct Stroke strokes[] = {
+    // I — a stem between two serifs.
+    { 4,  0, 20,  0}, {12,  0, 12, 39}, { 4, 39, 20, 39},
+    // V — two strokes meeting at the bottom.
+    { 0,  0, 11, 39}, {11, 39, 23,  0},
+    // O — an octagon, which at this size reads as a circle and costs eight lines
+    // instead of the divisions a real circle would want.
+    { 7,  0, 16,  0}, {16,  0, 23, 10}, {23, 10, 23, 29}, {23, 29, 16, 39},
+    {16, 39,  7, 39}, { 7, 39,  0, 29}, { 0, 29,  0, 10}, { 0, 10,  7,  0},
+    // N — down, across, up.
+    { 0, 39,  0,  0}, { 0,  0, 23, 39}, {23, 39, 23,  0},
+    // A — two legs and a crossbar.
+    { 0, 39, 11,  0}, {11,  0, 23, 39}, { 5, 26, 18, 26},
+};
+
+// Where each letter's run of strokes begins, and one more for where the last ends,
+// so drawing one letter does not walk the other eighteen strokes.
+const word first[LETTERS + 1] = {0, 3, 5, 13, 16, 19};
+
+// Eight steps around the RGB cube: red, orange, yellow, green, spring, azure, blue,
+// magenta. Written as red * 32 + green * 4 + blue so the arithmetic is visible rather
+// than hidden behind eight magic numbers; the compiler folds each one.
+const word colours[8] = {
+    7 * 32 + 0 * 4 + 0,         // red
+    7 * 32 + 4 * 4 + 0,         // orange
+    7 * 32 + 7 * 4 + 0,         // yellow
+    0 * 32 + 7 * 4 + 0,         // green
+    0 * 32 + 7 * 4 + 3,         // spring
+    0 * 32 + 3 * 4 + 3,         // azure
+    0 * 32 + 0 * 4 + 3,         // blue
+    7 * 32 + 0 * 4 + 3,         // magenta
+};
+
+// sin(k * 90 / 16 degrees) * 128 for k = 0..16, exactly as in cube.mona. A quarter
+// turn is all that has to be stored; `sine` folds the other three out of symmetry.
+const sword quarter[17] = {
+    0, 13, 25, 37, 49, 60, 71, 81, 91, 99, 106, 113, 118, 123, 126, 127, 128
+};
+
+// What each letter is doing: where it is, what colour it is, which step of its own
+// cycle it has reached, and the tick its second runs out on.
+struct Letter {
+    word top;
+    word colour;
+    word step;
+    word due;
+};
+
+struct Letter letters[LETTERS];
+
+word ticks = 0;                 // timer interrupts since the program started
+
+// ---------------------------------------------------------------- fixed point
+
+sword sine(word s) {
+    word k = s & 63;
+    if (k < 16) return quarter[k];
+    if (k < 32) return quarter[32 - k];
+    if (k < 48) return -quarter[k - 32];
+    return -quarter[64 - k];
+}
+
+// ---------------------------------------------------------------- the screen
+
+// Bresenham with the pixel address carried rather than recomputed, and the error
+// term held offset so that every comparison is unsigned. cube.mona has the full
+// derivation in the comment on its own `line`; the short version is that this
+// machine has no sign flag, so a signed compare costs two extra instructions on each
+// operand, and the offset makes all of them unsigned instead.
+//
+// Both `if`s below are about the error as it was on entry. The first branch tests
+// against `lo2`, which is `lo` adjusted by exactly what that branch's own update
+// did, so neither arm needs a temporary holding the old value.
+void line(word x0, word y0, word x1, word y1, word ink) {
+    word addr = y0 * 256 + x0;
+    word last = y1 * 256 + x1;
+
+    word dx;
+    word stepX;
+    if (x1 >= x0) { dx = x1 - x0; stepX = 1;       }
+    else          { dx = x0 - x1; stepX = 0 - 1;   }
+
+    word dy;
+    word stepY;
+    if (y1 >= y0) { dy = y1 - y0; stepY = 256;     }
+    else          { dy = y0 - y1; stepY = 0 - 256; }
+
+    word e   = dx + 512 - dy;
+    word hi  = (1024 - dy + 1) >> 1;
+    word lo  = (dx + 1024) >> 1;
+    word lo2 = lo - dy;
+
+    while (1) {
+        __out(VIDADDR, addr);
+        __out(VIDDATA, ink);
+        if (addr == last) return;
+        if (e >= hi) {
+            e = e - dy;
+            addr = addr + stepX;
+            if (e <= lo2) { e = e + dx; addr = addr + stepY; }
+        } else {
+            if (e <= lo) { e = e + dx; addr = addr + stepY; }
+        }
+    }
+}
+
+// One letter, at a height, in an ink. Ink 0 is the background, so this is also how a
+// letter is rubbed out: draw it again, in nothing, exactly where it already is.
+//
+// The strokes are walked with a pointer, which steps four bytes at a time, and the
+// loop ends on the first stroke of the next letter.
+void drawLetter(word letter, word at, word ink) {
+    word left = LEFT + letter * PITCH;
+    const struct Stroke* end = &strokes[first[letter + 1]];
+    for (const struct Stroke* s = &strokes[first[letter]]; s != end; s++) {
+        line(left + s->x0, at + s->y0, left + s->x1, at + s->y1, ink);
+    }
+}
+
+// ---------------------------------------------------------------- the animation
+
+// A letter's second has run out: rub it out, move it on, put it back.
+//
+// The height comes from the sine table so the letters rise and fall rather than
+// jump about, and the colour from the ramp. Both are indexed by that letter's own
+// step count, which is why the five of them are never doing the same thing.
+void replace(word letter) {
+    struct Letter* l = &letters[letter];
+    drawLetter(letter, l->top, 0);              // erase, exactly where it stood
+
+    word s = ++l->step;
+    sword bob = sine(s * 5) * 26 / 128;
+    // 108 give or take 26, plus a letter 39 tall, so the sign lives inside 82..173
+    // and a screen position can go back to being an unsigned number.
+    sword where = BASE + bob;
+    l->top = where;
+    l->colour = colours[s & 7];
+
+    drawLetter(letter, l->top, l->colour);
+}
+
+// ---------------------------------------------------------------- interrupts
+
+// All the handler does is count. Everything that draws happens in the main loop,
+// because replacing a letter is thousands of instructions and a handler that took
+// that long would still be running when the next interrupt arrived.
+void onIrq() {
+    word pending = __in(IRQSTATUS);     // who asked
+    if (pending & IRQ_TIMER) ticks++;
+    __out(IRQEOI, pending);             // acknowledge what we handled
+}
+
+// ---------------------------------------------------------------- setup
+
+// The whole word, drawn once. After this, nothing ever redraws more than one letter.
+//
+// The five deadlines are spread across the first second, a fifth apart, which is
+// what turns "each letter changes once a second" into a wave rolling along the sign
+// rather than five letters blinking together.
+void start() {
+    for (word i = 0; i < LETTERS; i++) {
+        struct Letter* l = &letters[i];
+        l->step = i;
+        l->top = BASE;
+        l->colour = colours[i];
+        drawLetter(i, l->top, l->colour);
+        l->due = TICKS_PER_SECOND * (i + 1) / LETTERS;
+    }
+}
+
+word main() {
+    __out(VIDMODE, MODE_BITMAP);
+    __out(VIDMODE, MODE_CLEAR);         // the only full clear the program ever does
+    start();
+
+    __setisr(&onIrq);
+    __out(IRQMASK, IRQ_TIMER);          // the timer only
+    __out(TMRPRELOAD, TIMER_PRELOAD);   // start the countdown
+    __sti();
+
+    while (1) {
+        for (word i = 0; i < LETTERS; i++) {
+            // `ticks` is written by the handler, so it is read once into a local
+            // rather than twice: an interrupt landing between two reads would
+            // compare one letter's deadline against two different clocks.
+            word now = ticks;
+            if (now >= letters[i].due) {
+                replace(i);
+                letters[i].due = now + TICKS_PER_SECOND;
+            }
+        }
+        // Every letter is whole here; the tests stop the program at this line.
+    }
+    return 0;
+}

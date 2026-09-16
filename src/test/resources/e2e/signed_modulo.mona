@@ -1,0 +1,7 @@
+// expect: A=65534
+// -20 % 3 = -2: the remainder takes the sign of the dividend, as in C.
+sword main() {
+    sword a = 0 - 20;
+    sword b = 3;
+    return a % b;
+}

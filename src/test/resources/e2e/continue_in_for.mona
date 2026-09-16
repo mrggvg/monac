@@ -1,0 +1,10 @@
+// expect: A=10
+// `continue` in a for loop must still run the update, or this never terminates.
+word main() {
+    word n = 0;
+    for (word i = 0; i < 10; i += 1) {
+        if (i < 5) continue;
+        n += 2;
+    }
+    return n;
+}

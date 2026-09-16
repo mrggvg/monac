@@ -1,0 +1,9 @@
+// expect: A=90
+// Exercises temporary slot reuse: several live intermediates at once.
+word main() {
+    word a = 2;
+    word b = 3;
+    word c = 4;
+    word d = 5;
+    return (a + b) * (c + d) * 2;
+}

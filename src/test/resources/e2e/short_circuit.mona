@@ -1,0 +1,8 @@
+// expect: A=1
+// The right operand of && must not be evaluated when the left is false.
+// Evaluating (10 / z) here would divide by zero and fault the machine, so this
+// program only halts at all if the short circuit is real.
+word main() {
+    word z = 0;
+    return ((z != 0) && (10 / z > 0)) || 1;
+}

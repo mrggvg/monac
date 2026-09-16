@@ -1,0 +1,6 @@
+// expect: A=1
+word main() {
+    word a = 7;
+    word b = 3;
+    return (a > b) & (a >= b) & (b < a) & (b <= a) & (a != b) & !(a == b);
+}

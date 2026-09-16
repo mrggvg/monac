@@ -1,0 +1,21 @@
+// expect: A=6
+// Regression for a load-folding bug.
+//
+// Indexing an array produces `MOV B, [B]` — the address is in B, and the value
+// replaces it. Remembering that "B holds what is at [B]" is a trap: after the
+// write, [B] names a completely different address, so folding it into the next
+// instruction reads memory at the value instead of at the pointer.
+//
+// This wants at least one indexed read feeding an arithmetic operation, which is
+// the shape that produces the self-referential load.
+word main() {
+    word a[3];
+    a[0] = 1;
+    a[1] = 2;
+    a[2] = 3;
+    word s = 0;
+    for (word i = 0; i < 3; i += 1) {
+        s += a[i];
+    }
+    return s;
+}

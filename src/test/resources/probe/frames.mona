@@ -1,0 +1,19 @@
+// __waitframe, with no handler and interrupts never enabled. Returns the frame count,
+// so A says both that the wait works and how many frames went by.
+//
+//     java -cp target/classes dev.madlador.Main src/test/resources/probe/frames.mona \
+//         -O1 -o /tmp/frames.asm
+//     node src/test/resources/probe/vsync.js /tmp/frames.asm
+//
+// It cannot be a JUnit test for the same reason vsync.mona cannot -- see vsync.js.
+// MachineBuiltinsIT covers the part that can be: with the display off, __waitframe
+// returns immediately rather than waiting for a refresh that will never come.
+word main() {
+    word frames = 0;
+    __out(7, 1);                    // the display on is what starts the refresh
+    while (frames < 25) {
+        __waitframe();
+        frames += 1;
+    }
+    return frames;
+}

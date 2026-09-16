@@ -1,0 +1,11 @@
+// expect: A=5
+word value = 0;
+
+void setValue(word v) {
+    value = v;
+}
+
+word main() {
+    setValue(5);
+    return value;
+}

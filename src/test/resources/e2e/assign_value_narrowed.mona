@@ -1,0 +1,17 @@
+// expect: A=31
+// An assignment's value is what its target holds afterwards, as in C: stepped past
+// 255 a byte is 0, stepped past 127 an sbyte is -128.
+word main() {
+    byte b = 255;
+    sbyte s = 127;
+    byte arr[2] = {255, 0};
+    byte d = 250;
+
+    word ok = 0;
+    if (++b == 0) ok |= 1;
+    if (++s < 0) ok |= 2;
+    if (++arr[0] == 0) ok |= 4;
+    if ((d += 10) == 4) ok |= 8;
+    if (b == 0 && s == -128 && arr[0] == 0 && d == 4) ok |= 16;
+    return ok;
+}

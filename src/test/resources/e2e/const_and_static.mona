@@ -1,0 +1,64 @@
+// expect: A=0
+//
+// const and static. Returns 0 when every claim holds, otherwise the failing check.
+
+const word WIDTH = 4;
+const word AREA = WIDTH * WIDTH;
+byte grid[AREA];                     // a const with a constant initializer is a constant
+const sword SEVEN = -7;
+const sword HALF = SEVEN / 2;        // folded as signed, as the machine divides it
+
+word counter() {
+    static word calls = 0;           // one copy, kept between calls
+    calls++;
+    return calls;
+}
+
+word computed = 0;
+
+word fib(word n) {
+    static word cache[24];           // zeroed in the image, shared by every call
+    if (n < 2) return n;
+    if (cache[n] != 0) return cache[n];
+    computed++;
+    word value = fib(n - 1) + fib(n - 2);
+    cache[n] = value;
+    return value;
+}
+
+word total(const word* values, word count) {
+    word sum = 0;
+    for (word i = 0; i < count; i++) sum += values[i];
+    return sum;
+}
+
+word main() {
+    if (sizeof(grid) != 16) return 1;
+
+    const word local = 3;
+    switch (5) {
+        case local + 2: break;
+        default: return 2;
+    }
+
+    if (counter() != 1) return 3;
+    if (counter() != 2) return 4;
+    if (counter() != 3) return 5;
+
+    if (fib(20) != 6765) return 6;
+    if (computed != 19) return 7;    // each of 2 to 20 worked out exactly once
+
+    word data[3];
+    data[0] = 1;
+    data[1] = 2;
+    data[2] = 3;
+    if (total(data, 3) != 6) return 8;
+    const word* view = data;
+    if (view[2] != 3) return 9;
+    view = &data[1];                 // the pointer itself is not const
+    if (*view != 2) return 10;
+
+    sword seven = -7;
+    if (HALF != seven / 2) return 11;
+    return 0;
+}

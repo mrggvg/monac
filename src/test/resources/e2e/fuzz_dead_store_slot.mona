@@ -1,0 +1,24 @@
+// expect: A=65535
+// maxSteps: 20000
+//
+// Found by the program fuzzer (seed 20362326): v5 is written inside the loops and never
+// read again, so its stack slot was freed at its last read — before the loops — and
+// handed to the outer counter. The dead store then reset the counter every time round,
+// and at -O1 the program never halted.
+
+struct S0 { sword m0[2]; sbyte m1; };
+struct S1 { sword m0; byte m1[2]; };
+sbyte g3[8];
+struct S0 t2[4];
+
+word main() {
+    sword v4 = 0;
+    sword v5 = v4;
+    v5 = ((t2[(65535 & 3)].m1 && v4) <= v5);
+    for (word i6 = 0; i6 < 2; i6 += 1) {
+        for (word i7 = 0; i7 < 4; i7 += 1) {
+            v5 = g3[(26401 & 7)];
+        }
+    }
+    return (~(g3[(238 & 7)] << (163 & 15)));
+}

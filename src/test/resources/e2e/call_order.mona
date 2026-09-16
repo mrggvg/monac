@@ -1,0 +1,9 @@
+// expect: A=1
+// Arguments must arrive in the right order: sub(10, 9) is 1, sub(9, 10) wraps.
+word sub(word a, word b) {
+    return a - b;
+}
+
+word main() {
+    return sub(10, 9);
+}

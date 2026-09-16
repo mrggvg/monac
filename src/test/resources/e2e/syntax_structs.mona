@@ -1,0 +1,115 @@
+// expect: A=0
+//
+// Part four of the executable half of docs/reference/language.md: the claims the other three
+// files do not reach — struct assignment, nested aggregates, the shapes sizeof
+// accepts, and the two builtins that are not one instruction. Returns 0 when every
+// claim holds, otherwise the check that failed.
+
+struct Point { word x; word y; };
+struct Inner { word v; };
+struct Outer { struct Inner in; word w; };      // a struct by value is fine as a member
+struct Holder { word cells[4]; word used; };    // and so is an array
+struct Selfish { word key; struct Selfish* next; };
+
+// The whole program from the top of language.md, so the first thing a reader copies is
+// known to work.
+word gcd(word a, word b) {
+    while (b != 0) {
+        word t = b;
+        b = a % b;
+        a = t;
+    }
+    return a;
+}
+
+word checkOpening() {
+    if (gcd(1071, 462) != 21) return 1;
+    word five = 5;
+    if (0 - five != 65531) return 2;            // unary minus on a word wraps
+    return 0;
+}
+
+// A struct cannot be passed or returned by value, but it can be assigned, and that
+// copies every byte rather than aliasing.
+word checkStructAssignment() {
+    struct Point a;
+    struct Point b;
+    a.x = 3; a.y = 4;
+    b.x = 0; b.y = 0;
+    b = a;
+    if (b.x != 3) return 3;
+    if (b.y != 4) return 4;
+    a.x = 9;
+    if (b.x != 3) return 5;
+    return 0;
+}
+
+word checkNested() {
+    struct Outer o;
+    o.in.v = 6;
+    o.w = 7;
+    if (o.in.v + o.w != 13) return 6;
+    if (sizeof(struct Outer) != 4) return 7;
+
+    struct Holder h;
+    h.cells[2] = 8;
+    h.used = 1;
+    if (h.cells[2] + h.used != 9) return 8;
+    if (sizeof(struct Holder) != 10) return 9;
+
+    struct Selfish node;                        // names itself through a pointer
+    node.key = 2;
+    node.next = 0;
+    if (node.next != 0) return 10;
+    return 0;
+}
+
+word checkSizeofShapes() {
+    struct Point a;
+    struct Point* p = &a;
+    if (sizeof(word*) != 2) return 11;          // it takes a pointer type
+    if (sizeof(struct Point*) != 2) return 12;
+    if (sizeof(*p) != 4) return 13;             // and an expression it does not evaluate
+    return 0;
+}
+
+word checkCharCase() {
+    word hit = 0;
+    switch ('A') {
+        case 'A': hit = 1; break;               // a character literal is a constant
+        default: hit = 2;
+    }
+    if (hit != 1) return 14;
+    return 0;
+}
+
+// The 32-character text display is memory mapped at 0x1000, so it needs no builtin:
+// it is an ordinary array of bytes.
+word checkTextDisplay() {
+    byte* screen = 4096;
+    screen[0] = 'M';
+    if (screen[0] != 'M') return 15;
+    return 0;
+}
+
+word checkHeap() {
+    __free(0);                                  // freeing zero is allowed, and does nothing
+    word* got = __alloc(sizeof(word) * 2);
+    if (got == 0) return 16;                    // always check: the machine has 4 KB
+    got[0] = 11;
+    got[1] = 77;
+    if (got[0] + got[1] != 88) return 17;
+    __free(got);
+    return 0;
+}
+
+word main() {
+    word bad = checkOpening();       if (bad != 0) return bad;
+    bad = checkStructAssignment();   if (bad != 0) return bad;
+    bad = checkNested();             if (bad != 0) return bad;
+    bad = checkSizeofShapes();       if (bad != 0) return bad;
+    bad = checkCharCase();           if (bad != 0) return bad;
+    bad = checkTextDisplay();        if (bad != 0) return bad;
+    bad = checkHeap();               if (bad != 0) return bad;
+    return 0;
+}

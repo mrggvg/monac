@@ -1,0 +1,4 @@
+// expect: A=14
+word main() {
+    return 2 + 3 * 4;
+}

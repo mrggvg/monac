@@ -1,0 +1,74 @@
+// expect: A=0
+//
+// do { } while (e); Returns 0 when every claim holds, otherwise the failing check.
+
+word main() {
+    // The body always runs once, even when the test is false from the start.
+    word runs = 0;
+    do {
+        runs = runs + 1;
+    } while (0);
+    if (runs != 1) return 1;
+
+    // The same loop written with while never runs at all.
+    word never = 0;
+    while (0) {
+        never = never + 1;
+    }
+    if (never != 0) return 2;
+
+    // Counting.
+    word i = 0;
+    word sum = 0;
+    do {
+        sum = sum + i;
+        i++;
+    } while (i < 5);
+    if (sum != 10) return 3;
+    if (i != 5) return 4;
+
+    // break leaves the loop.
+    word n = 0;
+    do {
+        n++;
+        if (n == 3) break;
+    } while (n < 100);
+    if (n != 3) return 5;
+
+    // continue jumps to the test, not past it -- so this still terminates.
+    word k = 0;
+    word odd = 0;
+    do {
+        k++;
+        if (k % 2 == 0) continue;
+        odd = odd + k;
+    } while (k < 6);
+    if (odd != 9) return 6;
+
+    // A single statement body needs no braces.
+    word m = 0;
+    do m++; while (m < 4);
+    if (m != 4) return 7;
+
+    // Nested, with the inner loop's break bound to the inner loop.
+    word outer = 0;
+    word total = 0;
+    do {
+        word inner = 0;
+        do {
+            inner++;
+            total = total + 1;
+            if (inner == 2) break;
+        } while (1);
+        outer++;
+    } while (outer < 3);
+    if (total != 6) return 8;
+
+    // The test sees what the body wrote.
+    word count = 10;
+    do {
+        count--;
+    } while (count);
+    if (count != 0) return 9;
+    return 0;
+}

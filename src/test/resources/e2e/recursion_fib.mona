@@ -1,0 +1,11 @@
+// expect: A=610
+// fib(15). Also a hard test of the calling convention: the stack must stay
+// balanced across thousands of nested frames.
+word fib(word n) {
+    if (n < 2) return n;
+    return fib(n - 1) + fib(n - 2);
+}
+
+word main() {
+    return fib(15);
+}

@@ -1,0 +1,93 @@
+// A binary search tree, sorted onto the text display.
+//
+// Ten numbers go in scrambled and come out in order, because an in-order walk of a
+// search tree is a sort. It needs two things this machine makes awkward: a type that
+// refers to itself, and real recursion.
+//
+//     the text display, 32 characters at 0x1000:
+//     04 11 17 23 29 35 42 56 68 91
+//
+// A node refers to a node, which is why `struct Node*` and not `struct Node`: a struct
+// that contained itself would have no size, and the compiler says so. Through a
+// pointer it is two bytes, and the recursion is fine.
+//
+// THE NODES COME FROM A POOL, not the heap. The program knows how many it will ever
+// need, and on a 4 KB machine an array sized for that is the better tool: no
+// allocator in the image, no bookkeeping per node, no allocation that can fail at run
+// time — and the compiler reports the memory it takes before the program ever runs.
+// heap.mona shows __alloc for the programs that really cannot know.
+
+struct Node {
+    word value;
+    struct Node* left;
+    struct Node* right;
+};
+
+const word CAPACITY = 16;
+
+// RAM arrives zeroed, so every link in the pool starts out null, and since a node is
+// never handed out twice, newNode need not clear one.
+struct Node pool[CAPACITY];
+word used = 0;
+
+struct Node* root = 0;
+
+// ---------------------------------------------------------------- the tree
+
+struct Node* newNode(word value) {
+    if (used == CAPACITY) return 0;
+    struct Node* node = &pool[used++];
+    node->value = value;
+    return node;
+}
+
+// The pointer-to-the-link idiom. Rather than walking the nodes and remembering which
+// side of which parent the new one goes on, walk the LINKS: `link` points at the
+// pointer that will hold the new node. The empty tree is then not a special case —
+// the first link is `root` itself.
+void insert(word value) {
+    struct Node* node = newNode(value);
+    if (node == 0) return;
+
+    struct Node** link = &root;
+    while (*link != 0) {
+        struct Node* at = *link;
+        link = value < at->value ? &at->left : &at->right;
+    }
+    *link = node;
+}
+
+word height(struct Node* node) {
+    if (node == 0) return 0;
+    word left = height(node->left);
+    word right = height(node->right);
+    return (left > right ? left : right) + 1;
+}
+
+// ---------------------------------------------------------------- the display
+
+byte* const SCREEN = 4096;      // 0x1000
+word column = 0;                // where the next number goes
+
+// Left subtree, then this node, then the right one — which visits a search tree in
+// ascending order. The sort is the shape of the tree, not an algorithm.
+void show(struct Node* node) {
+    if (node == 0) return;
+    show(node->left);
+    SCREEN[column]     = '0' + node->value / 10 % 10;
+    SCREEN[column + 1] = '0' + node->value % 10;
+    SCREEN[column + 2] = ' ';
+    column += 3;
+    show(node->right);
+}
+
+// In the image, not built by code at startup: a global's initializer list is data.
+const word keys[] = {35, 17, 68, 4, 23, 56, 91, 11, 29, 42};
+
+word main() {
+    for (word i = 0; i < sizeof(keys) / sizeof(keys[0]); i++) {
+        insert(keys[i]);
+    }
+    show(root);
+    return height(root);        // 4
+}

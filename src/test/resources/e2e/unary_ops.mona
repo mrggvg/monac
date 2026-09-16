@@ -1,0 +1,6 @@
+// expect: A=65530
+// Unary minus on an unsigned word wraps: -6 is 65530.
+word main() {
+    word x = 6;
+    return -x;
+}

@@ -1,0 +1,15 @@
+// expect: A=30
+// The table's bounds check is a single unsigned comparison: a subject below the
+// lowest label wraps around to a very large number and fails the same test, so
+// one branch covers both ends of the range.
+word f(word n) {
+    switch (n) {
+        case 10: return 10;
+        case 11: return 11;
+        case 12: return 12;
+        case 13: return 13;
+        default: return 30;
+    }
+}
+
+word main() { return f(0 - 5); }

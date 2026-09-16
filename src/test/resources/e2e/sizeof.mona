@@ -1,0 +1,30 @@
+// expect: A=28
+// sizeof folds at compile time, and asks about a type rather than a value: the
+// operand of the expression form is measured, not evaluated.
+struct Packed {
+    byte flag;      // 1
+    word value;     // 2, at an odd offset, because nothing here is padded
+};
+
+struct Pair {
+    struct Packed inner;   // 3
+    word count;            // 2
+};
+
+word main() {
+    struct Pair p;
+    word* pointer = 0;
+    byte small = 1;
+
+    return sizeof(byte)           //  1
+         + sizeof(word)           //  2
+         + sizeof(sword)          //  2
+         + sizeof(word*)          //  2
+         + sizeof(struct Packed)  //  3
+         + sizeof(struct Pair)    //  5
+         + sizeof(p)              //  5
+         + sizeof(p.inner)        //  3
+         + sizeof(p.count)        //  2
+         + sizeof(pointer)        //  2
+         + sizeof(small);         //  1  -> 28
+}

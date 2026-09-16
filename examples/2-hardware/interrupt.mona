@@ -1,0 +1,51 @@
+// Keyboard interrupts.
+//
+// There is one vector, at 0x0003, shared by every device, so a program has one
+// handler and works out who interrupted it by reading IRQSTATUS. An interrupt is
+// only delivered when BOTH the device's bit in IRQMASK (port 0) and the global
+// mask (via __sti) are set, and the handler must acknowledge through IRQEOI
+// (port 2) or it will be re-entered immediately.
+//
+// The handler is an ordinary void function. A trampoline at the vector saves the
+// registers, calls through the address __setisr stored, and returns with IRET.
+
+word pressed = 0;
+word lastKey = 0;
+
+void onInterrupt() {
+    word pending = __in(1);            // IRQSTATUS
+
+    if (pending & 1) {                 // bit 0: keyboard
+        lastKey = __in(6);             // KBDDATA; reading it lowers the request
+        pressed++;
+    }
+
+    __out(2, pending);                 // IRQEOI: acknowledge what we handled
+}
+
+// THE ORDER OF THOSE LAST TWO STEPS MATTERS. The keypad is level-triggered: a press
+// raises both the controller's level bit and its status bit. Reading KBDDATA lowers
+// the level and only the level; IRQEOI clears the status bit -- but IRQEOI is
+// `status ^= value` and then `status |= level`, so it restores whatever the level is
+// still asserting.
+//
+// Acknowledge first and the level is still high, so the status bit comes straight back
+// and this handler runs TWICE for one keypress: `pressed` reads 2, nothing hangs, and
+// it looks like a bug anywhere but here. Never read KBDDATA at all and the level never
+// falls, so the program stops making progress altogether.
+//
+// It also means writing back what IRQSTATUS reported is not merely tidy: since IRQEOI
+// is an XOR, acknowledging a line that is not raised would raise it.
+
+word main() {
+    __setisr(&onInterrupt);
+    __out(0, 1);                       // IRQMASK: let the keyboard interrupt
+    __sti();
+
+    // Wait for a key. A real program would do something useful here.
+    word spins = 0;
+    while (pressed == 0 && spins < 20000) spins++;
+
+    __cli();
+    return lastKey;
+}

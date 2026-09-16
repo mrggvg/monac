@@ -1,0 +1,29 @@
+// expect: A=130
+// A jump table inside a function that also calls, so the depth analysis has to
+// follow an indirect branch: every case arm is reached through JMP [A], and each
+// must agree with the others on how far the stack has moved.
+//
+//   classify(0) = add(0,1) = 1,  + 0 =   1
+//   classify(1) = add(1,2) = 3,  + 1 =   4
+//   classify(2) = add(2,3) = 5,  + 2 =   7
+//   classify(3) = add(3,4) = 7,  + 3 =  10
+//   classify(9) = 99,            + 9 = 108
+word add(word a, word b) {
+    return a + b;
+}
+
+word classify(word n) {
+    word total = 0;
+    switch (n) {
+        case 0: total = add(n, 1); break;
+        case 1: total = add(n, 2); break;
+        case 2: total = add(n, 3); break;
+        case 3: total = add(n, 4); break;
+        default: total = 99;
+    }
+    return add(total, n);
+}
+
+word main() {
+    return classify(0) + classify(1) + classify(2) + classify(3) + classify(9);
+}

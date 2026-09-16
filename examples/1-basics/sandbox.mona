@@ -1,0 +1,20 @@
+// Euclid's algorithm, small enough to read the compiler's output line by line.
+//
+//     monac examples/1-basics/sandbox.mona --dump-asm        what -O1 makes of it
+//     monac examples/1-basics/sandbox.mona --dump-asm -O0    and without the optimizer
+//
+// Put the two side by side: `a`, `b` and `r` live in registers at -O1, and in the
+// stack frame at -O0. gcd(1071, 462) = 21.
+
+word gcd(word a, word b) {
+    while (b != 0) {
+        word r = a % b;         // there is no MOD instruction: a - a / b * b
+        a = b;
+        b = r;
+    }
+    return a;
+}
+
+word main() {
+    return gcd(1071, 462);
+}

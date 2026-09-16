@@ -1,0 +1,10 @@
+// expect: A=100
+word main() {
+    word count = 0;
+    for (word i = 0; i < 10; i += 1) {
+        for (word j = 0; j < 10; j += 1) {
+            count += 1;
+        }
+    }
+    return count;
+}

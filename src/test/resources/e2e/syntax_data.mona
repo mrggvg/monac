@@ -1,0 +1,165 @@
+// expect: A=0
+//
+// Part two of the executable half of docs/reference/language.md: arrays, structs, pointers and
+// string literals. Returns 0 when every claim holds, otherwise the check that failed.
+
+struct Point { word x; word y; };
+struct Node { word key; struct Node* next; };
+struct Packed { byte flag; word value; sword signedValue; };
+
+word table[4];
+struct Point points[3];
+struct Point origin;
+word globalWord = 7;
+
+// ---------------------------------------------------------------- sizes
+
+word checkSizeof() {
+    if (sizeof(struct Point) != 4) return 1;
+    if (sizeof(struct Node) != 4) return 2;     // a pointer is two bytes
+    if (sizeof(struct Packed) != 5) return 3;   // packed: no padding anywhere
+    if (sizeof(table) != 8) return 4;
+    if (sizeof(globalWord) != 2) return 5;
+    return 0;
+}
+
+// ---------------------------------------------------------------- arrays
+
+// An array parameter is a pointer: arrays are never copied.
+word sumArray(word* values, word count) {
+    word total = 0;
+    for (word i = 0; i < count; i += 1) total += values[i];
+    return total;
+}
+
+word checkArrays() {
+    table[0] = 1; table[1] = 2; table[2] = 3; table[3] = 4;
+    if (sumArray(table, 4) != 10) return 6;     // the name decays to a pointer
+    word local[3];
+    local[0] = 5; local[1] = 6; local[2] = 7;
+    if (sumArray(local, 3) != 18) return 7;
+    if (table[1] + table[2] != 5) return 8;
+    return 0;
+}
+
+// ---------------------------------------------------------------- structs
+
+void setPoint(struct Point* p, word x, word y) {
+    p->x = x;
+    p->y = y;
+}
+
+word checkStructs() {
+    origin.x = 3;
+    origin.y = 4;
+    if (origin.x + origin.y != 7) return 9;
+
+    struct Point* p = &origin;
+    if (p->x != 3) return 10;                   // p->f is (*p).f
+    setPoint(p, 10, 20);                        // structs travel by pointer, never by value
+    if (origin.x != 10) return 11;
+    if (origin.y != 20) return 12;
+
+    points[1].x = 42;
+    if (points[1].x != 42) return 13;
+
+    struct Point localPoint;
+    localPoint.x = 1;
+    localPoint.y = 2;
+    if (localPoint.x + localPoint.y != 3) return 14;
+    return 0;
+}
+
+// The address of a member, every way of writing one.
+word checkMemberAddress() {
+    origin.x = 0;
+    origin.y = 0;
+    struct Point* p = &origin;
+
+    word* directly = &origin.y;
+    *directly = 99;
+    if (origin.y != 99) return 15;
+
+    word* throughPointer = &p->x;
+    *throughPointer = 88;
+    if (origin.x != 88) return 16;
+
+    word* ofAnElement = &points[2].y;
+    *ofAnElement = 77;
+    if (points[2].y != 77) return 17;
+    if (&points[2].y != &points[2].x + 1) return 18;
+    return 0;
+}
+
+// ---------------------------------------------------------------- pointers
+
+word checkPointers() {
+    word one = 1;
+    word* pointer = &one;
+    if (*pointer != 1) return 19;
+    *pointer = 2;
+    if (one != 2) return 20;
+
+    word** doublePointer = &pointer;            // any number of levels
+    if (**doublePointer != 2) return 21;
+    **doublePointer = 3;
+    if (one != 3) return 22;
+
+    // Adding to a pointer moves it whole elements, not bytes.
+    table[2] = 30;
+    word* base = &table[0];
+    if (*(base + 2) != 30) return 23;
+    if (base[2] != 30) return 24;               // a[i] is exactly *(a + i)
+    struct Point* pointBase = &points[0];
+    if (pointBase + 1 != &points[1]) return 25;
+
+    // Subtracting two pointers gives BYTES, not elements. That differs from C, and is
+    // worth knowing before relying on it.
+    if (&points[1] - &points[0] != 4) return 26;
+    if (&table[3] - &table[1] != 4) return 27;
+    return 0;
+}
+
+// The pointer-to-the-link idiom: `link` points at the field that has to change, so
+// inserting at the head needs no special case.
+struct Node pool[3];
+
+word checkLinkIdiom() {
+    struct Node* head = 0;
+    for (word i = 0; i < 3; i += 1) {
+        pool[i].key = i + 1;
+        pool[i].next = 0;
+        struct Node** link = &head;
+        while (*link != 0) {
+            link = &(*link)->next;              // the address of a member of *link
+        }
+        *link = &pool[i];
+    }
+    word seen = 0;
+    struct Node* walk = head;
+    while (walk != 0) {
+        seen = seen * 10 + walk->key;
+        walk = walk->next;
+    }
+    if (seen != 123) return 28;                 // appended in order
+    return 0;
+}
+
+word checkStrings() {
+    byte* text = "hi";
+    if (text[0] != 'h') return 29;
+    if (text[1] != 'i') return 30;
+    if (text[2] != 0) return 31;                // terminated for you
+    return 0;
+}
+
+word main() {
+    word bad = checkSizeof();        if (bad != 0) return bad;
+    bad = checkArrays();             if (bad != 0) return bad;
+    bad = checkStructs();            if (bad != 0) return bad;
+    bad = checkMemberAddress();      if (bad != 0) return bad;
+    bad = checkPointers();           if (bad != 0) return bad;
+    bad = checkLinkIdiom();          if (bad != 0) return bad;
+    bad = checkStrings();            if (bad != 0) return bad;
+    return 0;
+}

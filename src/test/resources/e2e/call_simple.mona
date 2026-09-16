@@ -1,0 +1,8 @@
+// expect: A=30
+word add(word a, word b) {
+    return a + b;
+}
+
+word main() {
+    return add(10, 20);
+}

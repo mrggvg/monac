@@ -1,0 +1,21 @@
+// expect: A=28
+// A switch inside a loop. `break` leaves the switch, not the loop, so the
+// `total += 1` after it still runs; `continue` belongs to the loop and skips it.
+//
+//   i=0        continue, skipping the trailing += 1      total 0
+//   i=1,2,3    1, 2, 4 then break, each +1 after         total 10
+//   i=4..9     default +2, each +1 after, six times      total 28
+word main() {
+    word total = 0;
+    for (word i = 0; i < 10; i += 1) {
+        switch (i) {
+            case 0: continue;
+            case 1: total += 1; break;
+            case 2: total += 2; break;
+            case 3: total += 4; break;
+            default: total += 2;
+        }
+        total += 1;
+    }
+    return total;
+}

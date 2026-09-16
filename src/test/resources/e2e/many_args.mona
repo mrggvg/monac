@@ -1,0 +1,8 @@
+// expect: A=21
+word sum6(word a, word b, word c, word d, word e, word f) {
+    return a + b + c + d + e + f;
+}
+
+word main() {
+    return sum6(1, 2, 3, 4, 5, 6);
+}

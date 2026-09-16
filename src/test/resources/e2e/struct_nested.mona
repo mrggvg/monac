@@ -1,0 +1,31 @@
+// expect: A=52
+// A struct inside a struct, and a whole-struct assignment into a member. The
+// nested member's offset is added to the outer one at compile time, so
+// r.origin.y is still a single displacement.
+struct Point {
+    word x;
+    word y;
+};
+
+struct Rect {
+    struct Point origin;
+    word w;
+    word h;
+};
+
+word area(struct Rect* r) {
+    return r->w * r->h;
+}
+
+word main() {
+    struct Point corner;
+    corner.x = 7;
+    corner.y = 9;
+
+    struct Rect r;
+    r.origin = corner;        // a struct copied into a member
+    r.w = 6;
+    r.h = 6;
+
+    return area(&r) + r.origin.x + r.origin.y;   // 36 + 7 + 9
+}

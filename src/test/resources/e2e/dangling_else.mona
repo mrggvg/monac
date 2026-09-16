@@ -1,0 +1,8 @@
+// expect: A=2
+// `else` must bind to the nearest unmatched `if`, so this yields 2, not 3.
+word main() {
+    word r = 3;
+    if (1)
+        if (0) r = 1; else r = 2;
+    return r;
+}

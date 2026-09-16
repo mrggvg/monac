@@ -1,0 +1,9 @@
+// expect: A=1
+// Signed comparison needs the XOR 0x8000 bias, because the machine has no sign
+// flag and only unsigned branches. Unsigned, -5 would compare as 65531 > 3.
+sword main() {
+    sword a = 0 - 5;
+    sword b = 3;
+    if (a < b) return 1;
+    return 0;
+}

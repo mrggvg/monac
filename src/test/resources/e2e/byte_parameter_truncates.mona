@@ -1,0 +1,10 @@
+// expect: A=44
+// A byte parameter narrows what it is given, as an assignment would:
+// 300 becomes 44.
+word take(byte b) {
+    return b;
+}
+
+word main() {
+    return take(300);
+}

@@ -1,0 +1,6 @@
+// A void function promises nothing about A, so only the universal invariants
+// apply here: the stack must be balanced and D restored.
+void main() {
+    word x = 5;
+    x = x + 1;
+}

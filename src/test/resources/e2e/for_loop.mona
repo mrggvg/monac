@@ -1,0 +1,9 @@
+// 10! = 3628800, which wraps to 24320 in 16 bits
+// expect: A=24320
+word main() {
+    word f = 1;
+    for (word i = 1; i <= 10; i += 1) {
+        f *= i;
+    }
+    return f;
+}

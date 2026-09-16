@@ -1,0 +1,12 @@
+// expect: A=55
+word main() {
+    word a[10];
+    for (word i = 0; i < 10; i += 1) {
+        a[i] = i + 1;
+    }
+    word sum = 0;
+    for (word j = 0; j < 10; j += 1) {
+        sum += a[j];
+    }
+    return sum;
+}

@@ -1,0 +1,52 @@
+// expect: A=0
+//
+// The ?: operator. Returns 0 when every claim holds, otherwise the failing check.
+
+word calls = 0;
+
+word bump() {
+    calls = calls + 1;
+    return 1;
+}
+
+word main() {
+    if ((1 ? 10 : 20) != 10) return 1;
+    if ((0 ? 10 : 20) != 20) return 2;
+
+    // Only the taken arm is evaluated.
+    calls = 0;
+    word r = 0 ? bump() : 5;
+    if (calls != 0) return 3;
+    if (r != 5) return 4;
+    r = 1 ? bump() : 5;
+    if (calls != 1) return 5;
+    if (r != 1) return 6;
+
+    // Which is what makes it safe over a pointer that may be null.
+    word v = 42;
+    word* p = &v;
+    word* nil = (word*) 0;
+    if ((p ? *p : 0) != 42) return 7;
+    if ((nil ? *nil : 0) != 0) return 8;
+
+    // Right associative: a ? b : c ? d : e groups as a ? b : (c ? d : e).
+    word n = 3;
+    word grade = n < 2 ? 1 : n < 4 ? 2 : 3;
+    if (grade != 2) return 9;
+
+    // Nested in the middle arm, and as a call argument.
+    if ((1 ? (0 ? 7 : 8) : 9) != 8) return 10;
+
+    // With ?: in the language, min/max/abs are one line each.
+    word a = 4;
+    word b = 9;
+    if ((a < b ? a : b) != 4) return 11;
+    if ((a > b ? a : b) != 9) return 12;
+    sword s = 0 - 6;
+    if ((s < 0 ? 0 - s : s) != 6) return 13;
+
+    // It binds looser than every binary operator and tighter than assignment.
+    word x = 1 + 1 ? 2 * 3 : 4;
+    if (x != 6) return 14;
+    return 0;
+}

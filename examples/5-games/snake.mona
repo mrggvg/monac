@@ -1,0 +1,330 @@
+// Snake, in tile mode, with sprites, a ring buffer and structs.
+//
+// A port of Amar Ustavdic's hand-written assembly version -- the design and every
+// pixel of the artwork are his. Same game; the parts that are different are the parts
+// this language can do better than assembly could.
+//
+// HOW IT USES THE CARD
+//
+//   - The BOARD is the graphics card's tile map, a 16x16 corner of it, and the body is
+//     written into it as tiles. That makes the card the occupancy grid: "is something
+//     here?" is a VRAM read, not a search.
+//
+//   - The HEAD is four sprites stacked in one place. A tile is one bit per pixel and
+//     so two colours, but a sprite's clear pixels are transparent rather than
+//     background, so four layered give a green head with a red tongue, white eyes and
+//     black pupils. The apple is two more.
+//
+//   - Only FOUR tile shapes are stored. The other twelve head tiles are exact quarter
+//     turns of them, generated at startup. 128 bytes of artwork rather than 512. The
+//     body is a solid block, so __vfill draws it with no stored data at all.
+//
+//   - PACING is the card's own 50 Hz refresh, polled by __waitframe, so there is no
+//     interrupt handler anywhere in this program.
+//
+// HOW IT USES THE LANGUAGE
+//
+//   - struct Sprite IS the card's sprite record: four packed bytes, tile then colour
+//     then x then y. Mona structs have no padding, so a struct written straight into
+//     video memory with __vwrite lands in exactly the right shape. Six named records
+//     in RAM instead of six pairs of magic addresses.
+//
+//   - The body is a RING BUFFER in a fixed array. Moving is O(1): write the new head
+//     at one end, drop the old tail from the other. The assembly version pushed every
+//     segment onto the stack and popped it back one slot along, which is O(length)
+//     per move and the single biggest thing worth changing. The ring's length is a
+//     power of two, so stepping an index round it is an AND rather than a compare.
+//
+//   - Nothing is allocated. The ring is 128 squares, half the board, and a snake that
+//     fills it simply stops growing; the compiler knows the program's memory before it
+//     runs, and there is no allocator in the image.
+//
+//   - The ports and the directions are enums, and a direction's step is a table
+//     lookup rather than a chain of ifs.
+//
+// Controls: A turns left, D turns right, relative to where the snake is facing. Turn
+// CapsLock off. Pacing comes from the card, so the simulator's speed setting changes
+// how much thinking fits between frames rather than how fast the snake moves.
+//
+// To watch it play headlessly -- the refresh is wall-clock, so this needs the probe
+// harness rather than the oracle:
+//
+//     java -cp target/classes dev.madlador.Main examples/5-games/snake.mona -O1 -o /tmp/snake.asm
+//     node src/test/resources/probe/vsync.js /tmp/snake.asm 12000
+//
+// With no key pressed it runs into the top wall and halts with the score in A.
+
+// ---------------------------------------------------------------- the card
+
+enum Port { VIDMODE = 7, VIDADDR = 8, VIDDATA = 9, KBDSTATUS = 5, KBDDATA = 6, RANDOM = 10 };
+enum { MODE_TILE = 1, KEY_DOWN = 1 };
+
+word tileCell(word x, word y) {
+    return (y * 128 + x) * 2;           // two bytes a cell, 128 cells a row
+}
+
+void setCell(word cell, word value) {
+    __out(VIDADDR, cell);
+    __out(VIDDATA, value);              // high byte tile, low byte colour
+}
+
+word getCell(word cell) {
+    __out(VIDADDR, cell);
+    return __in(VIDDATA);              // writing VIDADDR pre-loads VIDDATA
+}
+
+// Four packed bytes at 0xA306 + 4n, which is what the card reads and what this struct
+// is. x and y are in PIXELS, in screen space, so scrolling the map would not move a
+// sprite.
+struct Sprite {
+    byte tile;
+    byte colour;
+    byte px;
+    byte py;
+};
+
+struct Sprite sprites[6];               // 0,1 the apple; 2..5 the head's four layers
+
+// The one place the correspondence is used: the struct goes to the card as it stands.
+void pushSprite(word index) {
+    __vwrite(41734 + index * 4, &sprites[index], 4);        // 0xA306 + 4n
+}
+
+// A cell coordinate is 0..15, so sixteen times it is 0..240 and fits a byte -- but the
+// compiler cannot know that from the expression, and would rightly warn about the
+// narrowing without the mask.
+byte pixelsOf(word cellCoordinate) {
+    return (cellCoordinate * 16) & 255;
+}
+
+void placeSprite(word index, word tile, word colour, word cell) {
+    sprites[index].tile = tile & 255;
+    sprites[index].colour = colour & 255;
+    sprites[index].px = pixelsOf((cell & 255) >> 1);        // low byte is twice the column
+    sprites[index].py = pixelsOf(cell >> 8);                // high byte is the row
+    pushSprite(index);
+}
+
+// ---------------------------------------------------------------- the artwork
+
+byte turned[32];                        // one quarter turn at a time
+byte scratch[32];
+
+// A tile is sixteen rows of sixteen bits, two bytes a row, most significant bit
+// leftmost. Turning it a quarter clockwise means dst[r][c] = src[15-c][r]: for a fixed
+// output row, the bits are one source COLUMN read from the bottom up.
+//
+// Both indices would want a shift by a variable, which this machine has no instruction
+// for. Neither is needed: the column is picked by a mask walked one bit rightwards per
+// row, and the output is accumulated a bit at a time.
+void rotateCw(byte* from, byte* into) {
+    word mask = 32768;                  // column 0 is the top bit
+    for (word r = 0; r < 16; r += 1) {
+        word acc = 0;
+        word row = 16;
+        while (row > 0) {
+            row -= 1;                   // bottom row first, so it lands in the top bit
+            acc = acc << 1;
+            word bits = from[2 * row] * 256 + from[2 * row + 1];
+            if ((bits & mask) != 0) acc += 1;
+        }
+        into[2 * r] = acc >> 8;
+        into[2 * r + 1] = acc & 255;
+        mask = mask >> 1;
+    }
+}
+
+void defineTile(word index, byte* shape) {
+    __vwrite(32768 + index * 32, shape, 32);        // 0x8000 + 32n
+}
+
+// The four directions live four tiles apart, so one layer of the head is one stored
+// shape and three turns of it.
+void defineHeadLayer(word layer, byte* shape) {
+    word tile = 237 + layer;            // 0xED
+    defineTile(tile, shape);
+    rotateCw(shape, turned);
+    defineTile(tile + 4, turned);
+    rotateCw(turned, scratch);
+    defineTile(tile + 8, scratch);
+    rotateCw(scratch, turned);
+    defineTile(tile + 12, turned);
+}
+
+void loadArtwork() {
+    defineHeadLayer(0, "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xC3\xC3\xC3\xC3\xC3\xC3\xC3\xC3\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF");
+    defineHeadLayer(1, "\x0F\xF0\x0F\xF0\x03\xC0\x03\xC0\x03\xC0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
+    defineHeadLayer(2, "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0C\x30\x0C\x30\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
+    defineHeadLayer(3, "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x30\x0C\x30\x0C\x3C\x3C\x3C\x3C\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
+    __vfill(32768 + 253 * 32, 65535, 32);           // the body: solid, so no data
+    defineTile(254, "\x00\x00\x00\x00\x00\x00\x0C\x30\x1E\x78\x3F\xFC\x7F\xFE\x7F\xFE\x7F\xFE\x3F\xFC\x3F\xFC\x1F\xF8\x0F\xF0\x02\x40\x00\x00\x00\x00");
+    defineTile(255, "\x00\x30\x00\x70\x00\xE0\x00\xC0\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
+}
+
+// ---------------------------------------------------------------- the snake
+
+// A ring buffer. The body is a queue -- new squares at one end, old ones off the other
+// -- and a ring is that queue without any copying: both ends are an index that steps
+// forward and wraps. Every move is a constant amount of work however long the snake is.
+const word RING = 128;                  // a power of two: wrapping is `& (RING - 1)`
+
+word ring[RING];
+// head is the index of the NEWEST square, so an empty ring has it one slot BEHIND the
+// tail; the first push then advances onto the tail's slot.
+word head = RING - 1;
+word tail = 0;                          // index of the oldest
+word length = 0;
+
+void pushHead(word cell) {
+    head = (head + 1) & (RING - 1);
+    ring[head] = cell;
+    length++;
+}
+
+word popTail() {
+    word cell = ring[tail];
+    tail = (tail + 1) & (RING - 1);
+    length--;
+    return cell;
+}
+
+// ---------------------------------------------------------------- the game
+
+enum Direction { UP = 1, RIGHT, DOWN, LEFT };
+
+// What one step in each direction does to a cell address: a row is 256 bytes, a
+// column two. Indexed by the direction, so entry 0 is unused.
+const word offset[5] = {0, -256, 2, 256, -2};
+
+word direction = UP;
+word newHead = 0;
+word ateApple = 0;
+word appleCell = 0;
+
+word frames = 15;                       // refreshes between moves: the speed
+word applesToSpeedUp = 5;
+word score = 0;
+
+const word BODY_CELL = 0xFD34;          // the solid tile 0xFD, in snake green 0x34
+
+// The text display, 32 characters memory mapped at 0x1000.
+byte* const SCREEN = 4096;
+
+void prepareTextDisplay() {
+    __memset(SCREEN, ' ', 32);
+    __memcpy(SCREEN, "Score: 00", 9);
+}
+
+void displayScore() {
+    SCREEN[7] = '0' + score / 10 % 10;
+    SCREEN[8] = '0' + score % 10;
+}
+
+void showGameOver() {
+    __memcpy(SCREEN + 19, "GAME OVER", 9);  // past the score
+}
+
+void drawHead() {
+    word cell = ring[head];
+    word tile = 237 + (direction - 1) * 4;
+    placeSprite(2, tile, 52, cell);             // green head
+    placeSprite(3, tile + 1, 224, cell);        // red tongue
+    placeSprite(4, tile + 2, 0, cell);          // black pupils
+    placeSprite(5, tile + 3, 255, cell);        // white eyes
+}
+
+// A free square, found by asking the hardware for a random word and masking it into the
+// board rather than dividing: 0x0F1E keeps the row under 16 and the column under 16,
+// already doubled. The occupancy test is a read of that cell.
+void spawnApple() {
+    for (word tries = 0; tries < 300; tries++) {
+        word cell = __in(RANDOM) & 0x0F1E;
+        if (getCell(cell) == 0 && cell != ring[head]) {
+            appleCell = cell;
+            placeSprite(0, 254, 224, cell);     // the fruit, red
+            placeSprite(1, 255, 28, cell);      // the leaf, green
+            return;
+        }
+    }
+}
+
+// A turn is relative: D steps the direction round the compass, A steps it back.
+//
+// KBDSTATUS is not a flag, it is a small bit field: 1 is a key going DOWN, 2 is one
+// coming UP, and 4 is added to either when a previous event was never collected. So
+// the values a program actually sees are 1, 2, 5 and 6.
+//
+// Which makes the draining unconditional. Reading KBDDATA is what returns the port to
+// 0; testing for a press and returning early leaves a key-up sitting there forever,
+// and from then on every press reads 5 and the keyboard appears dead. Collect first,
+// decide afterwards.
+void pollKeys() {
+    word status = __in(KBDSTATUS);
+    if (status == 0) return;            // nothing waiting
+    word key = __in(KBDDATA);           // and reading it clears the request
+    if ((status & KEY_DOWN) == 0) return;   // a key coming up: collected, not a turn
+    if (key == 'd') direction = direction == LEFT ? UP : direction + 1;
+    if (key == 'a') direction = direction == UP ? LEFT : direction - 1;
+}
+
+void waitFrames(word count) {
+    while (count > 0) {
+        __waitframe();
+        pollKeys();                     // read between frames, never mid-move
+        count--;
+    }
+}
+
+// Two squares change however long the snake is: where the head was becomes body, and
+// the vacated tail is cleared. That is the whole point of the ring.
+void moveSnake() {
+    word from = ring[head];
+    newHead = from + offset[direction];
+    ateApple = newHead == appleCell;
+
+    if (!ateApple || length == RING) {
+        setCell(popTail(), 0);
+    }
+    pushHead(newHead);
+    setCell(from, BODY_CELL);
+}
+
+word isGameOver() {
+    if ((newHead & 255) > 30) return 1;     // off the left or the right edge
+    if ((newHead >> 8) > 15) return 1;      // off the top or the bottom
+    return getCell(newHead) == BODY_CELL;   // into itself
+}
+
+word main() {
+    __out(VIDMODE, MODE_TILE);
+    loadArtwork();
+    prepareTextDisplay();
+
+    pushHead(tileCell(7, 12));          // the tail
+    pushHead(tileCell(7, 11));          // the head, so it points up
+    setCell(tileCell(7, 12), BODY_CELL);
+    drawHead();
+    spawnApple();
+    displayScore();
+
+    waitFrames(50);                     // a second to take in the board
+
+    while (1) {
+        moveSnake();
+        if (isGameOver()) {
+            showGameOver();
+            return score;
+        }
+        drawHead();
+        if (ateApple) {
+            score++;
+            displayScore();
+            if (--applesToSpeedUp == 0) {       // faster every fifth apple
+                applesToSpeedUp = 5;
+                if (frames > 10) frames--;
+            }
+            spawnApple();
+        }
+        waitFrames(frames);
+    }
+}

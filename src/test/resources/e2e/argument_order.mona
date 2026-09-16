@@ -1,0 +1,21 @@
+// expect: A=17657
+// Six arguments: the first in a register, the rest pushed. Getting an offset wrong
+// by one word would still compile and still run — it would just read the
+// neighbouring argument — so every value contributes a distinct decimal column.
+word pick(word a, word b, word c, word d, word e, word f) {
+    return a * 10000 + b * 1000 + c * 100 + d * 10 + e + f;
+}
+
+// A call inside an argument list must not disturb an argument already computed,
+// which is why argument 0 is placed in its register last of all.
+word inner(word n) {
+    return n + 1;
+}
+
+word nested(word x) {
+    return pick(inner(x), 7, 6, 5, 4, 3);
+}
+
+word main() {
+    return nested(0);         // pick(1, 7, 6, 5, 4, 3) = 17657
+}

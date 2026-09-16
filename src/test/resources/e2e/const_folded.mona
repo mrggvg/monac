@@ -1,0 +1,18 @@
+// expect: A=7070
+// A const with a constant value is read as that value, narrowed the way its type
+// narrows it, and its storage is still there for anything that takes its address.
+const word K = 7;
+const byte NARROW = (byte)300;          // 44: a byte keeps eight bits
+const sbyte MINUS = (sbyte)-1;          // reads back as 0xFFFF, and compares as signed
+byte* const CELL = 3000;                // a const pointer with a constant address
+
+word main() {
+    const word LOCAL = 5;
+    static const word KEPT = 11;
+    CELL[0] = NARROW;
+    CELL[1] = 2;
+    word* through = (word*)&K;          // the storage, reached by address: 7
+    sword m = MINUS;
+    word negative = (m < 0 ? 1 : 0) + (MINUS < 0 ? 1 : 0);   // 2
+    return K * 1000 + CELL[0] + CELL[1] + *through + LOCAL + KEPT + negative - 1;
+}
